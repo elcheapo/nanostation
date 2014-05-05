@@ -29,18 +29,8 @@
 // 1. Processor Definitions
 //========================================================================
 //
-// El cheapo remote uses a seeeduino with the ATMega328P
+// Nano Station uses a ATMega328P on an arduino nano
 
-//#define RADIO1 Set in project properties
-//#define RADIO2
-
-#if defined(RADIO1) & defined(RADIO2)
-#error only one of RADIO1 or RADIO2 must be defined
-#endif
-
-#if  !defined(RADIO1) & !defined(RADIO2)
-#error one of RADIO1 or RADIO2 must be defined
-#endif
 
 #undef DEBUG
 
@@ -51,42 +41,44 @@
 
 // Port B
 
-#define LCD_D_C		0		// out
-#define LCD_RST 	1		// out
-#define LCD_SCE		2		// out
-#define MOSI		3		// out
-#define MISO		4		// in
-#define SCK			5		// out
-#define PortB6		6		// out
-#define PortB7		7		// out
+#define PortB0			0		// out
+#define PB1_OC1A 		1		// out
+#define PB_NRF_CSN		2		// out
+#define MOSI			3		// out
+#define MISO			4		// in
+#define SCK				5		// out
+#define PortB6			6		// out
+#define PortB7			7		// out
 
 #define PORTB_DIRECTION	((uint8_t)0xef)   	// Output PINs for PORTB
 
 
 // Port C
 #define ADC0		0
-#define ADC1 		1
+//#define ADC1 		1
+#define PC1_POT		1		// out
 #define ADC2		2
-#define ADC3		3
+//#define ADC3		3
+#define PC3_POT		3		// out
 #define SDA			4
 #define SCL			5
 #define ADC6		6
 #define	ADC7		7
 
 
-#define PORTC_DIRECTION	((uint8_t)0x00)   	// Output PINs for PORTC
+#define PORTC_DIRECTION	((uint8_t)0x0A)   	// Output PINs for PORTC
 
 // Port D
-#define PortD0		0		// out
-#define PortD1 		1		// out
-#define NRF_IRQ		2		// in
-#define NRF_CSN		3		// out
-#define NRF_CE		4		// out
-#define PortD5		5		// out
-#define RETRO		6		// out (OC0A
-#define PortD7		7		// out
+#define PortD0			0		// in (RX)
+#define PortD1 			1		// out (TX)
+#define PD_NRF_IRQ		2		// in (INT0)
+#define PD_NRF_CE		3		// out
+#define PD_PortD4		4		// out
+#define PD_PortD5		5		// out
+#define PD_L298_IN1		6		// out
+#define PD_L298_IN2		7		// out
 
-#define PORTD_DIRECTION	((uint8_t)0xfb)   	// Output PINs for PORTD
+#define PORTD_DIRECTION	((uint8_t)0xfa)   	// Output PINs for PORTD
 
 //========================================================================
 // 3. System Definitions

@@ -74,7 +74,7 @@ void radio_send_packet_no_ack(uint8_t *packet, uint8_t length);
 //void radio_irq (void);
 
 inline uint8_t radio_activity(void) {
-	if ( (PIND & (1<<NRF_IRQ)) == 0)
+	if ( (PIND & (1<<PD_NRF_IRQ)) == 0)
 		return true;
 	else
 		return false;

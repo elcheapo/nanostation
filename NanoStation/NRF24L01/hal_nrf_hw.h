@@ -41,28 +41,28 @@ inline void hal_spi_init(uint32_t spi_speed){
  *
  */
 inline void CSN_LOW(void) {
-	PORTD &= ~(1<<NRF_CSN);
+	PORTB &= ~(1<<PB_NRF_CSN);
 }
 
 /** Macro that set radio's CSN line HIGH.
  *
  */
 inline void CSN_HIGH(void){
-	PORTD |= (1<<NRF_CSN);
+	PORTB |= (1<<PB_NRF_CSN);
 }
 
 /** Macro that set radio's CE line LOW.
  *
  */
 inline void CE_LOW(void) {
-	PORTD &= ~(1<<NRF_CE);
+	PORTD &= ~(1<<PD_NRF_CE);
 }
 
 /** Macro that set radio's CE line HIGH.
  *
  */
 inline void CE_HIGH(void) {
-	PORTD |= (1<<NRF_CE);
+	PORTD |= (1<<PD_NRF_CE);
 }
 
 /**

@@ -5,8 +5,8 @@
  *      Author: florrain
  */
 
-#include "elcheapo.h"
-#include "organizer.h"
+#include "elcheapo_remote.h"
+//#include "organizer.h"
 #include "adc.h"
 #include "dcc_timer.h"
 

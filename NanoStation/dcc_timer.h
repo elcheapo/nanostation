@@ -10,9 +10,9 @@
 
 // define which timers are used for DCC output
 #define USE_TIMER1
-#define USE_TIMER3
-#define USE_TIMER4
-#define USE_TIMER5
+//#define USE_TIMER3
+//#define USE_TIMER4
+//#define USE_TIMER5
 
 // define some handy names for the states of the ISR
 #define DOI_IDLE     (0)
