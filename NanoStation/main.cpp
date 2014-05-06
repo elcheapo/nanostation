@@ -36,12 +36,8 @@ int main(void) {
 	//set output I/O to 1, Input to no pull-up
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
-	// set CE low (transmit packet when CE pulsed high)
-	CE_LOW();
 
-	lcd = &radio_lcd2;
-//	line = lcd->next_line();
-	hal_nrf_write_lcd_pload(2, 1, lcd->get_next_line(), 13);
+	radio_pl_init (HAL_NRF_PRX);
 
 	while (1) {
 		CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
@@ -49,10 +45,9 @@ int main(void) {
 		if ((status & 0x0e) != 0x0e) { // a packet is available
 			// get it
 			count = hal_nrf_read_reg(R_RX_PL_WID);
-			hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, pload, count);
+			hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
 			// clear IRQ source
 			hal_nrf_get_clear_irq_flags();
-			EIMSK |= (1<<INT7); // Re-enable level sensitive interrupt
 
 			switch ((status & 0x0e) >> 1) {
 			case 1: // Radio1 H/W on channel 1

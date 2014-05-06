@@ -32,6 +32,110 @@
 #define ACK_PL
 #define AUTO_ACK
 
+/** The address of the radio. Parameter to the radio init LSB first */
+const uint8_t NRF_address1[HAL_NRF_AW_5BYTES] = {0xa5,'h','c','l','E'};
+const uint8_t NRF_address2[HAL_NRF_AW_5BYTES] = {0x55,'h','c','l','E'};
+const uint8_t NRF_address3[HAL_NRF_AW_5BYTES] = {0x5a,'h','c','l','E'};
+
+
+void radio_pl_init (hal_nrf_operation_mode_t operational_mode) {
+//	uint8_t buffer[6];
+
+	hal_spi_init(8000000);						// Init SPI at 8 MHz
+	CE_LOW();        // Set Chip Enable (CE) pin low during chip init
+
+	hal_nrf_write_reg(EN_RXADDR, 0);	 // First close all radio pipes
+	hal_nrf_write_reg(EN_AA, 0);
+
+	// Pipe 0, 1 and 2 open with autoack
+	hal_nrf_write_reg(EN_RXADDR, 0x07);
+	hal_nrf_write_reg(EN_AA, 0x07);
+
+	hal_nrf_write_reg(SETUP_AW, HAL_NRF_AW_5BYTES - 2); // 5 bytes address width
+	hal_nrf_write_reg(SETUP_RETR, (((RF_RETRANS_DELAY/250)-1)<<4) | RF_RETRANSMITS);
+	hal_nrf_write_reg(RF_CH, RF_CHANNEL);
+	// Frequency = 2400 + RF_CHANNEL
+	hal_nrf_write_reg(RF_SETUP, 0x0e) ;
+	//2 Mbits - not test PLL - 0dBm - default settings
+
+	// Write addresses LSB first
+//	hal_nrf_write_multibyte_reg(HAL_NRF_PIPE0, NRF_address2, HAL_NRF_AW_5BYTES);
+	hal_nrf_write_multibyte_reg(HAL_NRF_PIPE1, NRF_address1, HAL_NRF_AW_5BYTES);
+	hal_nrf_write_reg(HAL_NRF_PIPE2, NRF_address2[0]);
+	hal_nrf_write_multibyte_reg(HAL_NRF_TX, NRF_address1, HAL_NRF_AW_5BYTES);
+	hal_nrf_write_reg(RX_PW_P0, RF_PAYLOAD_LENGTH);
+	hal_nrf_write_reg(RX_PW_P1, RF_PAYLOAD_LENGTH);
+	hal_nrf_write_reg(RX_PW_P2, RF_PAYLOAD_LENGTH);
+	hal_nrf_write_reg(RX_PW_P3, RF_PAYLOAD_LENGTH);
+	hal_nrf_write_reg(RX_PW_P4, RF_PAYLOAD_LENGTH);
+	hal_nrf_write_reg(RX_PW_P5, RF_PAYLOAD_LENGTH);
+//	hal_nrf_lock_unlock ();                 // Activate features
+	hal_nrf_write_reg(DYNPD, 0x07);			// Sets up dynamic payload on all data pipes.
+	hal_nrf_write_reg(FEATURE, 0x06);  // Enable dynamic payload, enable ack payload
+	if(operational_mode == HAL_NRF_PTX) {           // Mode dependent settings
+		hal_nrf_write_reg(CONFIG, 0b00001110);
+		// IRQ on, EN_CRC, 2 bytes CRC, PWR UP, PTX
+	} else {
+		hal_nrf_write_reg(CONFIG, 0b00001111);
+		// IRQ on, EN_CRC, 2 bytes CRC, PWR UP, PRX
+	}
+	vTaskDelay( 20 / portTICK_RATE_MS );		// Wait for Radio to power up (4ms min)
+	hal_nrf_write_reg(STATUS, 0x70);
+	hal_nrf_flush_tx(); 						// flush tx fifo, to start clean
+
+	// Clear pending IRQ
+#ifdef DEBUG
+	Serial3.print(F("EN_RXADDR = 0x"));
+	Serial3.println(hal_nrf_read_reg(EN_RXADDR),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("EN_AA = 0x"));
+	Serial3.println(hal_nrf_read_reg(EN_AA),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("SETUP_RETR = 0x"));
+	Serial3.println(hal_nrf_read_reg(SETUP_RETR),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("RF_CH = "));
+	Serial3.println(hal_nrf_read_reg(RF_CH),10);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("RF_SETUP = 0x"));
+	Serial3.println(hal_nrf_read_reg(RF_SETUP),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("DYNPD = 0x"));
+	Serial3.println(hal_nrf_read_reg(DYNPD),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("FEATURE = 0x"));
+	Serial3.println(hal_nrf_read_reg(FEATURE),16);
+	vTaskDelay( 6 / portTICK_RATE_MS );
+	Serial3.print(F("ADR0 = "));
+	hal_nrf_read_multibyte_reg(HAL_NRF_PIPE0, buffer, 5);
+	for (uint8_t i = 0; i<5; i++) {
+		Serial3.print(buffer[i],16);Serial3.write(':');
+	}
+	Serial3.println();
+	Serial3.print(F("ADR1 = "));
+	hal_nrf_read_multibyte_reg(HAL_NRF_PIPE1, buffer, 5);
+	for (uint8_t i = 0; i<5; i++) {
+		Serial3.print(buffer[i],16);Serial3.write(':');
+	}
+	Serial3.println();
+
+	Serial3.print(F("ADR2 = "));
+	Serial3.println(hal_nrf_read_reg(HAL_NRF_PIPE2),16);
+
+	Serial3.print(F("TXADR = "));
+	hal_nrf_read_multibyte_reg(HAL_NRF_TX, buffer, 5);
+	for (uint8_t i = 0; i<5; i++) {
+		Serial3.print(buffer[i],16);Serial3.write(':');
+	}
+	Serial3.println();
+	Serial3.print(F("CONFIG = 0x"));
+	Serial3.println(hal_nrf_read_reg(CONFIG),16);
+#endif
+
+}
+
+
+
 void radio_pl_init (const uint8_t *address, hal_nrf_operation_mode_t operational_mode) {
 
 #ifdef DEBUG
