@@ -24,6 +24,6 @@
  * @param address The radios working address
  * @param operational_mode The operational mode, either @c HAL_NRF_PRX or @c HAL_NRF_PTX
  */
-void radio_pl_init (const uint8_t *address, hal_nrf_operation_mode_t operational_mode);
+void radio_pl_init_prx (void);
 
 #endif

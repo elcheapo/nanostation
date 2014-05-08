@@ -7,7 +7,7 @@
 
 #include "elcheapo_remote.h"
 //#include "organizer.h"
-#include "adc.h"
+//#include "adc.h"
 #include "dcc_timer.h"
 
 
@@ -36,12 +36,14 @@ DCC_timer::DCC_timer( volatile uint8_t *_tccra,
 	timsk = _timsk;
 	tifr = _tifr;
 	ddr = _ddr;
-	direct = 1;
-	direct_ready = 0;
-	vSemaphoreCreateBinary(packet_sent);
-	vSemaphoreCreateBinary(ready_for_acknowledge);
+//	direct = 1;
+//	direct_ready = 0;
+//	vSemaphoreCreateBinary(packet_sent);
+//	vSemaphoreCreateBinary(ready_for_acknowledge);
 
 }
+
+#if 0
 
 #ifdef USE_TIMER1
 DCC_timer timer1 (&TCCR1A,&TIMSK1,&TIFR1,&DDRB); // Voie 1 Gare
@@ -49,7 +51,7 @@ ISR(TIMER1_OVF_vect) {
 #ifdef DEBUG_IT
 	ENTER_IT;
 #endif
-	if (adc_mode == digital1) start_adc();
+//	if (adc_mode == digital1) start_adc();
 	timer1.timer_overflow_interrupt();
 #ifdef DEBUG_IT
 	EXIT_IT;
@@ -207,7 +209,9 @@ void DCC_timer::timer_overflow_interrupt(void) {
 		break;
 	}
 }
+#endif
 
+#if 0
 void DCC_timer::begin(tmode mode){
 	if (mode == digital) {
 		_doi_packet.repeat_ctr = 0;
@@ -268,13 +272,32 @@ void DCC_timer::send_direct_dcc_packet(message * direct) {
 	current_message = *direct;
 	pkt_ready = 1;
 }
+#endif
+void DCC_timer::begin(tmode mode){
+
+	*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF
+			| 1 << COM1A0	| 1 << COM1A1		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
+			| 0 << COM1B0	| 0 << COM1B1;
+//			| 0 << COM1C0	| 0 << COM1C1;
+
+	*tccrb = 0<<WGM13	| 0 << WGM12
+			| (0<<CS12) | (1<<CS11) | (0<<CS10);	//  prescaler / 8, source=16 MHz / 511 = 3.9 KHz
+	*timsk = 0; 				// no timer interrupt
+	if (IS_TIMER1) {
+		*ddr = T1_OCRA|T1_OCRB|T1_OCRC;
+		*dcc_port &= ~(T1_OCRB|T1_OCRC); // start with output OCRB/C deactivated
+	} else {
+		*ddr = T3_OCRA|T3_OCRB|T3_OCRC;
+		*dcc_port &= ~(T3_OCRB|T3_OCRC); // start with output OCRB/C deactivated
+	}
+}
 
 void DCC_timer::end(void) {
 	*timsk = 0; // disable timer interrupt
 	*tccra = 0 << WGM10| 0 << WGM11
 			| 0 << COM1A0	| 0 << COM1A1		// No output on OCxA
-			| 0 << COM1B0	| 0 << COM1B1		// No output on OCxB
-			| 0 << COM1C0	| 0 << COM1C1;		// No output on OCxC
+			| 0 << COM1B0	| 0 << COM1B1;		// No output on OCxB
+//			| 0 << COM1C0	| 0 << COM1C1;		// No output on OCxC
 	*tccrb = 0<<WGM13 | 0 << WGM12
 			| (0<<CS12) | (0<<CS11) | (0<<CS10);// timer stopped, no clock
 	if (IS_TIMER1) {

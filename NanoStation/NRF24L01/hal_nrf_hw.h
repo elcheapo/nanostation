@@ -32,7 +32,10 @@ inline uint8_t hal_nrf_rw(uint8_t value){
 }
 
 inline void hal_spi_init(uint32_t spi_speed){
-	// Already initialized for LCD
+	DDRB |= (1<<PB_NRF_CSN);
+	PORTB |= (1<<PB_NRF_CSN); // Set chip select High
+	SPCR = (0<<SPIE)|(1<<SPE)|(0<<DORD)|(1<<MSTR)|(0<<CPOL)|(0<<CPHA)|(0<<SPR1)|(1<<SPR0);
+	SPSR = (1<<SPI2X);
 }
 
 // See config.h for hardware definition

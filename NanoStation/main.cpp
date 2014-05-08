@@ -8,6 +8,7 @@
 
 #include "elcheapo_remote.h"
 #include "timer0.h"
+#include "dcc_timer.h"
 
 #include "hal_nrf_reg.h"
 #include "hal_nrf.h"
@@ -19,15 +20,25 @@ int16_t adc_value;
 uint8_t radio_data[RF_PAYLOAD_LENGTH];
 
 
+#define POINT_MORT_MARGIN 16
+
+void pot_to_speed (DCC_timer * timer, uint16_t pot) {
+	if (pot > (512 + POINT_MORT_MARGIN)) {
+		timer->analog_set_speed(pot - (512 + POINT_MORT_MARGIN) );
+		timer->analog_set_direction(forward);
+	} else if (pot < (512 - POINT_MORT_MARGIN)) {
+		timer->analog_set_speed(512 - POINT_MORT_MARGIN - pot);
+		timer->analog_set_direction(backward);
+	} else {
+		timer->analog_set_speed(0);
+		timer->analog_set_direction(off);
+	}
+}
 
 int main(void) {
-	uint8_t key,i;
-	bool connected;
 	uint8_t status;
 	uint8_t count;
-	bool lcd_update;
-	/* lcd_update can be disabled to monitor only SPI NRF traffic */
-	bool extra_packet;
+	uint16_t speed;
 
 	// see config.h
 	DDRB=PORTB_DIRECTION;
@@ -37,73 +48,27 @@ int main(void) {
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
 
-	radio_pl_init (HAL_NRF_PRX);
+	radio_pl_init_prx();
 
 	while (1) {
 		CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
 		status = hal_nrf_get_status();
-		if ((status & 0x0e) != 0x0e) { // a packet is available
+		if ((status & (1<<HAL_NRF_RX_DR)) != 0) { // a packet is available
 			// get it
 			count = hal_nrf_read_reg(R_RX_PL_WID);
 			hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
 			// clear IRQ source
 			hal_nrf_get_clear_irq_flags();
 
-			switch ((status & 0x0e) >> 1) {
-			case 1: // Radio1 H/W on channel 1
-				kbd=&radio_kbd1;
-				lcd=&radio_lcd1;
-				/* increment radio_ok counter by 2 */
-				if (kbd->radio_ok != NOT_PRESENT) kbd->radio_ok = NOT_PRESENT;
-				/* decrement other radio count */
-				if (radio_kbd2.radio_ok != 0) radio_kbd2.radio_ok--;
-				ack_pipe = 1;
-#ifdef DEBUG
-				Serial3.write('a');
-#endif
-				break;
-			case 2: // Radio2 H/W on channel 2
-				kbd=&radio_kbd2;
-				lcd=&radio_lcd2;
-				/* increment radio_ok counter by 2 */
-				if (kbd->radio_ok != NOT_PRESENT) kbd->radio_ok = NOT_PRESENT;
-				/* decrement other radio count */
-				if (radio_kbd1.radio_ok != 0) radio_kbd1.radio_ok--;
-				ack_pipe = 2;
-#ifdef DEBUG
-				Serial3.write('b');
-#endif
-				break;
-			default:
-#ifdef DEBUG
-				Serial3.write('M');
-				Serial3.println(status,16);
-#endif
-				continue;
-				break;
-			}
-			switch (pload[0]) {
+			switch (radio_data[0]) {
 			case 0:
 				/* Just asking for an ack packet cuz sender didn't get one ... */
 				break;
-			case 1:
-				/* Normal kbd/adc packet */
-				kbd->scan_input(pload+1);
-				kbd->pot[0]=(pload[5]<<8)+pload[6];
-				kbd->pot[1]=(pload[7]<<8)+pload[8];
-				kbd->pot[2]=(pload[9]<<8)+pload[10];
-				kbd->pot[3]=(pload[11]<<8)+pload[12];
-				// Now returns led / lines to display
-				if ((status & 0x01) == 0) { // Make sure there is space in TX FIFO
-				line = lcd->next_line();
-				if (line == 0) {
-					// send pseudo LED data
-					hal_nrf_write_led_pload(ack_pipe, lcd->get_pseudo_led(), 11);
-				} else  {
-					hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
-				}
-				}
+			case 3:
+				speed = (radio_data[3] << 8) + radio_data[4];
+				pot_to_speed(&timer1, speed);
 				break;
+//				hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
 			/* Ignore other stuff */
 			default:
 				break;
@@ -111,20 +76,10 @@ int main(void) {
 		} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
 			hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
 			// TO BE CHECKED .... but does not seem to happen ...
-#ifdef DEBUG
-			Serial3.write('F');
-#endif
 		} else { // Wait for next packet for 2000 ms max
-			if (xSemaphoreTake(radio_done,2000 / portTICK_RATE_MS ) != pdTRUE) {
-				// Timeout on Radio reception
-				radio_kbd1.radio_ok = false;
-				radio_kbd2.radio_ok = false;
-#ifdef DEBUG1
-				Serial3.print(F("ST:"));Serial3.println(hal_nrf_get_status(),16);
-#endif
 				// Reprogram radio
 				CE_LOW();        // Set Chip Enable (CE) pin low during chip init
-				radio_pl_init (HAL_NRF_PRX);
+				radio_pl_init_prx ();
 				// and wait
 #ifdef DEBUG
 				Serial3.write('Z');

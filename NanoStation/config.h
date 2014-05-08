@@ -94,4 +94,7 @@
 #define OK TRUE
 #define NOK FALSE
 
+typedef enum {dcc_off, analog, digital} tmode;
+typedef enum {off, forward, backward} tdirection;
+
 #endif   // config.h
