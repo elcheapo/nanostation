@@ -14,7 +14,6 @@
 #include "hal_nrf.h"
 
 #include "radio.h"
-#include "radio_pl.h"
 
 int16_t adc_value;
 uint8_t radio_data[RF_PAYLOAD_LENGTH];
@@ -36,7 +35,7 @@ void pot_to_speed (DCC_timer * timer, uint16_t pot) {
 }
 
 int main(void) {
-	uint8_t status;
+	uint8_t status,ack;
 	uint8_t count;
 	uint16_t speed;
 
@@ -61,9 +60,6 @@ int main(void) {
 			hal_nrf_get_clear_irq_flags();
 
 			switch (radio_data[0]) {
-			case 0:
-				/* Just asking for an ack packet cuz sender didn't get one ... */
-				break;
 			case 3:
 				speed = (radio_data[3] << 8) + radio_data[4];
 				pot_to_speed(&timer1, speed);
@@ -80,21 +76,21 @@ int main(void) {
 				// Reprogram radio
 				CE_LOW();        // Set Chip Enable (CE) pin low during chip init
 				radio_pl_init_prx ();
-				// and wait
-#ifdef DEBUG
-				Serial3.write('Z');
-#endif
-			} else {
-				// Signal received from INT7
-#ifdef DEBUG1
-				Serial3.write('i');
-#endif
+		}					;
+		// Packet received and processed, wait for next packet for 1 sec
+		set_radio_timeout(250);
+		ack = 0;
+		while (!check_radio_timeout()) {
+			if (radio_activity()) {
+				ack=1;
+				break;
 			}
 		}
-	} // while
-}
-		/* don't resend a packet too fast */
-		while (!check_loop_time());
+		if (ack == 0) {
+			// No packet received for 1 sec - turn OFF outputs
+			timer1.analog_set_speed(0);
+			timer1.analog_set_direction(off);
+		}
+		// Packet should have been received let's try to see
 	}
 }
-

@@ -67,6 +67,19 @@ typedef enum {
 void radio_send_packet(uint8_t *packet, uint8_t length);
 void radio_send_packet_no_ack(uint8_t *packet, uint8_t length);
 
+/** For turning on dynamic payload on all pipes. Sets bits 0-6 */
+#define ALL_PIPES (0x3F)
+
+/** Initializes the radio in Enhanced ShockBurst mode with ACK payload. This mean that we
+ * enable auto-retransmit and auto-acknowledgment as in Enhanced ShockBurst, and the
+ * features auto-ack payload and dynamic payload width.
+ *
+ * @param address The radios working address
+ * @param operational_mode The operational mode, either @c HAL_NRF_PRX or @c HAL_NRF_PTX
+ */
+void radio_pl_init_prx (void);
+
+
 /** This function reads the interrupts. It does the work
  * of a interrupt handler by manually reading the interrupt
  * flags and act on them.

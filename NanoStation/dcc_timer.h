@@ -102,15 +102,15 @@ inline void DCC_timer::set_queue(void) {direct=0;};
 #endif
 
 #define dcc_port (ddr+1)
-#define IS_TIMER1 ((uint16_t)(ddr) == 0x24)
+//#define IS_TIMER1 ((uint16_t)(ddr) == 0x24)
 
-#define T1_OCRA (0x20)
-#define T1_OCRB (0x40)
-#define T1_OCRC (0x80)
+//#define T1_OCRA (0x40)
+//#define T1_OCRB (0x80)
+//#define T1_OCRC (0x80)
 
-#define T3_OCRA (0x08)
-#define T3_OCRB (0x10)
-#define T3_OCRC (0x20)
+//#define T3_OCRA (0x08)
+//#define T3_OCRB (0x10)
+//#define T3_OCRC (0x20)
 
 #if 0
 inline void DCC_timer::digital_on(void) {

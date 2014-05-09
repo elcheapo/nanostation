@@ -6,9 +6,11 @@
  */
 
 #include "elcheapo_remote.h"
+#include "timer0.h"
 
 volatile uint8_t timeout;
 volatile uint8_t loop_time;
+volatile uint8_t radio_timeout;
 
 void init_timer0_tick(void) {
     // Timer/Counter 0 initialization
@@ -29,36 +31,15 @@ void init_timer0_tick(void) {
     		|(0 << CS01)
     		|(0 << CS00);
     TIMSK0 = (1<<TOV0); // interrupt on overflow every 4.096 ms
-#ifdef RADIO1
-    OCR0A = 0x30;   // 30/FF% duty cycle on lcd backlight ...
-#else
-    OCR0A = 0x40;   // 40/FF% duty cycle on lcd backlight ...
-#endif
+    OCR0A = 0;
     OCR0B = 0; // not used
     TCNT0=0x00;
     timeout = 0;
 }
 
-void wait_tempo(uint8_t nb) {
-	timeout = nb;
-	while (timeout != 0);
-}
-void set_timeout(uint8_t nb) {
-	timeout = nb;
-}
-void set_loop_time(uint8_t nb) {
-	loop_time = nb;
-}
 
-uint8_t check_timeout(void) {
-	if (timeout == 0) return true;
-	return false;
-}
-uint8_t check_loop_time(void) {
-	if (loop_time == 0) return true;
-	return false;
-}
 ISR(TIMER0_OVF_vect) {
 	if (timeout != 0) timeout--;
 	if (loop_time != 0) loop_time--;
+	if (radio_timeout != 0) radio_timeout--;
 }

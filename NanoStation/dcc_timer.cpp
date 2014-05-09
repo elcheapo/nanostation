@@ -43,10 +43,11 @@ DCC_timer::DCC_timer( volatile uint8_t *_tccra,
 
 }
 
-#if 0
 
 #ifdef USE_TIMER1
-DCC_timer timer1 (&TCCR1A,&TIMSK1,&TIFR1,&DDRB); // Voie 1 Gare
+DCC_timer timer1 (&TCCR1A,&TIMSK1,&TIFR1,&DDRD); // Voie 1 Gare
+
+#if 0
 ISR(TIMER1_OVF_vect) {
 #ifdef DEBUG_IT
 	ENTER_IT;
@@ -58,6 +59,9 @@ ISR(TIMER1_OVF_vect) {
 #endif
 }
 #endif
+#endif
+
+#if 0
 
 #ifdef USE_TIMER3
 DCC_timer timer3 (&TCCR3A,&TIMSK3,&TIFR3,&DDRE); // Voie 1
@@ -278,18 +282,12 @@ void DCC_timer::begin(tmode mode){
 	*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF
 			| 1 << COM1A0	| 1 << COM1A1		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
 			| 0 << COM1B0	| 0 << COM1B1;
-//			| 0 << COM1C0	| 0 << COM1C1;
 
 	*tccrb = 0<<WGM13	| 0 << WGM12
 			| (0<<CS12) | (1<<CS11) | (0<<CS10);	//  prescaler / 8, source=16 MHz / 511 = 3.9 KHz
 	*timsk = 0; 				// no timer interrupt
-	if (IS_TIMER1) {
-		*ddr = T1_OCRA|T1_OCRB|T1_OCRC;
-		*dcc_port &= ~(T1_OCRB|T1_OCRC); // start with output OCRB/C deactivated
-	} else {
-		*ddr = T3_OCRA|T3_OCRB|T3_OCRC;
-		*dcc_port &= ~(T3_OCRB|T3_OCRC); // start with output OCRB/C deactivated
-	}
+	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2);
+	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)); // start with output IN1/IN2 deactivated
 }
 
 void DCC_timer::end(void) {
@@ -300,14 +298,8 @@ void DCC_timer::end(void) {
 //			| 0 << COM1C0	| 0 << COM1C1;		// No output on OCxC
 	*tccrb = 0<<WGM13 | 0 << WGM12
 			| (0<<CS12) | (0<<CS11) | (0<<CS10);// timer stopped, no clock
-	if (IS_TIMER1) {
-		*ddr = T1_OCRA|T1_OCRB|T1_OCRC;
-		*dcc_port &= ~(T1_OCRA|T1_OCRB|T1_OCRC); // turn off all signals
-	} else {
-		*ddr = T3_OCRA|T3_OCRB|T3_OCRC;
-		*dcc_port &= ~(T3_OCRA|T3_OCRB|T3_OCRC); // turn off all signals
-	}
-
+	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2);
+	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)); // start with output IN1/IN2 deactivated
 }
 
 void DCC_timer::analog_set_speed(uint16_t speed) {
@@ -327,39 +319,24 @@ uint16_t DCC_timer::analog_get_speed(void) {
 }
 
 void DCC_timer::analog_set_direction(tdirection direction) {
-	if (IS_TIMER1) {
-		if (direction == off) {
-			*dcc_port &= ~(T1_OCRB|T1_OCRC);		// OCxB, OCxC = 0
-		} else if (direction == forward) {
-			*dcc_port &= ~T1_OCRC; 	// OCxC = 0
-			*dcc_port |= T1_OCRB; 	// OCxB = 1
-		} else {
-			*dcc_port &= ~T1_OCRB;	// OCxB = 0
-			*dcc_port |= T1_OCRC;		// OCxC = 1
-		}
+	if (direction == off) {
+		*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
+	} else if (direction == forward) {
+		*dcc_port &= ~(1<<PD_L298_IN2); 	// OCxC = 0
+		*dcc_port |= (1<<PD_L298_IN1); 	// OCxB = 1
 	} else {
-		if (direction == off) {
-			*dcc_port &= ~(T3_OCRB|T3_OCRC);		// OCxB, OCxC = 0
-		} else if (direction == forward) {
-			*dcc_port &= ~T3_OCRC; 	// OCxC = 0
-			*dcc_port |= T3_OCRB; 	// OCxB = 1
-		} else {
-			*dcc_port &= ~T3_OCRB;	// OCxB = 0
-			*dcc_port |= T3_OCRC;		// OCxC = 1
-		}
+		*dcc_port &= ~(1<<PD_L298_IN1);	// OCxB = 0
+		*dcc_port |= (1<<PD_L298_IN2);		// OCxC = 1
 	}
 }
 tdirection DCC_timer::analog_get_direction(void) {
 	uint8_t temp;
-	if (IS_TIMER1)
-		temp = ((*dcc_port) & (T1_OCRB|T1_OCRC)) >> 2;
-	else
-		temp = (*dcc_port) & (T3_OCRB|T3_OCRC);
+		temp = ((*dcc_port) & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
 	switch (temp) {
 	default:
 	case 0: return off;
-	case 0x10: return forward;
-	case 0x20: return backward;
+	case (1<<PD_L298_IN1): return forward;
+	case (1<<PD_L298_IN2): return backward;
 	}
 }
 
