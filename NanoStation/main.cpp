@@ -50,8 +50,13 @@ int main(void) {
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
 
+
 	Serial.begin(115200);
 	init_timer0_tick();
+	// enable interrupts
+	__builtin_avr_sei ();
+
+
 	radio_pl_init_prx();
 	Serial.write('>');
 

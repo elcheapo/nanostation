@@ -74,7 +74,7 @@ void radio_pl_init_prx (void) {
 //	hal_nrf_write_multibyte_reg(HAL_NRF_TX, NRF_address1, HAL_NRF_AW_5BYTES); Not used in PRX
 	hal_nrf_write_reg(RX_PW_P0, RF_PAYLOAD_LENGTH);
 	hal_nrf_write_reg(DYNPD, 0x01);			// Sets up dynamic payload on data pipe 0.
-	hal_nrf_write_reg(FEATURE, 0x06);  // Enable dynamic payload, enable ack payload
+	hal_nrf_write_reg(FEATURE, 0x07);  // Enable dynamic payload, enable ack payload
 	hal_nrf_write_reg(CONFIG, 0b00001111);
 	// IRQ on, EN_CRC, 2 bytes CRC, PWR UP, PRX
 	wait_tempo(2);
