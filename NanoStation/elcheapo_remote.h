@@ -37,3 +37,4 @@
 #define nop()  __asm__ __volatile__("nop")
 #include "config.h"
 
+#define DEBUG

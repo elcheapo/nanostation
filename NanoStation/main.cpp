@@ -1,8 +1,10 @@
 /*
  * main.c
  *
- *  Created on: Mar 31, 2013
+ *  Created on: Mar 1, 2014
  *      Author: francois
+ *      Nano Receiver and PWM controller
+ *      "NanoStation"
  */
 
 
@@ -14,6 +16,7 @@
 #include "hal_nrf.h"
 
 #include "radio.h"
+#include "HardwareSerial.h"
 
 int16_t adc_value;
 uint8_t radio_data[RF_PAYLOAD_LENGTH];
@@ -47,7 +50,10 @@ int main(void) {
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
 
+	Serial.begin(115200);
+	init_timer0_tick();
 	radio_pl_init_prx();
+	Serial.write('>');
 
 	while (1) {
 		CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
@@ -58,7 +64,9 @@ int main(void) {
 			hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
 			// clear IRQ source
 			hal_nrf_get_clear_irq_flags();
-
+#ifdef DEBUG
+			Serial.write('.');
+#endif
 			switch (radio_data[0]) {
 			case 3:
 				speed = (radio_data[3] << 8) + radio_data[4];
@@ -72,11 +80,12 @@ int main(void) {
 		} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
 			hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
 			// TO BE CHECKED .... but does not seem to happen ...
-		} else { // Wait for next packet for 2000 ms max
+		} else {
 				// Reprogram radio
 				CE_LOW();        // Set Chip Enable (CE) pin low during chip init
 				radio_pl_init_prx ();
-		}					;
+				Serial.write('R');
+		};
 		// Packet received and processed, wait for next packet for 1 sec
 		set_radio_timeout(250);
 		ack = 0;
@@ -90,6 +99,7 @@ int main(void) {
 			// No packet received for 1 sec - turn OFF outputs
 			timer1.analog_set_speed(0);
 			timer1.analog_set_direction(off);
+			Serial.write('S');
 		}
 		// Packet should have been received let's try to see
 	}
