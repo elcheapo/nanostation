@@ -63,6 +63,10 @@ int main(void) {
 	while (1) {
 		CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
 		status = hal_nrf_get_status();
+#ifdef DEBUG
+		Serial.print(F("ST="));
+		Serial.println(status,16);
+#endif
 		if ((status & (1<<HAL_NRF_RX_DR)) != 0) { // a packet is available
 			// get it
 			count = hal_nrf_read_reg(R_RX_PL_WID);
