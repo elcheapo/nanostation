@@ -22,8 +22,8 @@
  */
 
 /** Defines the channel the radio should operate on*/
-#define RF_CHANNEL 72
-
+//#define RF_CHANNEL 72
+#define RF_CHANNEL 64
 /** Defines the time it takes for the radio to come up to operational mode */
 #define RF_POWER_UP_DELAY 2
 
