@@ -53,6 +53,7 @@ int main(void) {
 
 	Serial.begin(115200);
 	init_timer0_tick();
+	timer1.begin(analog);
 	// enable interrupts
 	__builtin_avr_sei ();
 
