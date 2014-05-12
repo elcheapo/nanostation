@@ -49,7 +49,10 @@ int main(void) {
 	//set output I/O to 1, Input to no pull-up
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
+	ACSR = (1<<ACD) | (1<<ACIE); // Disable anaolog comparator
 
+	DIDR0 = 0x3F; // Disable digital function input on ADC pîns (PORTC)
+	DIDR1 = 0; //do not disable digital function on PD6/PD7
 
 	Serial.begin(115200);
 	init_timer0_tick();
