@@ -28,9 +28,28 @@ void pot_to_speed (DCC_timer * timer, uint16_t pot) {
 	if (pot > (512 + POINT_MORT_MARGIN)) {
 		timer->analog_set_speed(pot - (512 + POINT_MORT_MARGIN) );
 		timer->analog_set_direction(forward);
+#ifdef DEBUG
+		Serial.println(F("FORWARD"));
+		Serial.print(F("DDRD="));
+		Serial.println(DDRD,16);
+		Serial.print(F("PORTD="));
+		Serial.println(PORTD,16);
+		Serial.print(F("PIND="));
+		Serial.println(PIND,16);
+#endif
+
 	} else if (pot < (512 - POINT_MORT_MARGIN)) {
 		timer->analog_set_speed(512 - POINT_MORT_MARGIN - pot);
 		timer->analog_set_direction(backward);
+#ifdef DEBUG
+		Serial.println(F("BACKWARD"));
+		Serial.print(F("DDRD="));
+		Serial.println(DDRD,16);
+		Serial.print(F("PORTD="));
+		Serial.println(PORTD,16);
+		Serial.print(F("PIND="));
+		Serial.println(PIND,16);
+#endif
 	} else {
 		timer->analog_set_speed(0);
 		timer->analog_set_direction(off);
@@ -49,7 +68,7 @@ int main(void) {
 	//set output I/O to 1, Input to no pull-up
 	PORTB = PORTB_DIRECTION;
 	PORTD = PORTD_DIRECTION;
-	ACSR = (1<<ACD) | (1<<ACIE); // Disable anaolog comparator
+	ACSR = (1<<ACD) | (1<<ACIE); // Disable analog comparator
 
 	DIDR0 = 0x3F; // Disable digital function input on ADC pîns (PORTC)
 	DIDR1 = 0; //do not disable digital function on PD6/PD7

@@ -17,8 +17,7 @@ void init_timer0_tick(void) {
     // Clock source: System Clock / 256
     // Clock value: 4 ms per round
     // Mode: PWM
-    // OC0 output: RETRO Eclairage lcd
-    TCCR0A = (1 << COM0A1) // OC0A output
+    TCCR0A = (0 << COM0A1) // No OC0A output
     		|(0 << COM0A0)
     		|(0 << COM0B1) // No OC0B output
     		|(0 << COM0B0)
