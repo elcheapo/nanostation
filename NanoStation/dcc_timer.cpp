@@ -281,13 +281,13 @@ void DCC_timer::begin(tmode mode){
 
 	*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF
 			| 1 << COM1A0	| 1 << COM1A1		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
-			| 0 << COM1B0	| 0 << COM1B1;
+			| 1 << COM1B0	| 1 << COM1B1;		// PWM signal on OCRB - Inverted, set at match with OCRB, cleared at bottom
 
 	*tccrb = 0<<WGM13	| 0 << WGM12
-			| (0<<CS12) | (1<<CS11) | (0<<CS10);	//  prescaler / 8, source=16 MHz / 511 = 3.9 KHz
+			| (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
 	*timsk = 0; 				// no timer interrupt
-	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2);
-	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)); // start with output IN1/IN2 deactivated
+	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
+	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
 }
 
 void DCC_timer::end(void) {
@@ -298,45 +298,73 @@ void DCC_timer::end(void) {
 //			| 0 << COM1C0	| 0 << COM1C1;		// No output on OCxC
 	*tccrb = 0<<WGM13 | 0 << WGM12
 			| (0<<CS12) | (0<<CS11) | (0<<CS10);// timer stopped, no clock
-	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2);
-	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)); // start with output IN1/IN2 deactivated
+	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
+	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
 }
 
-void DCC_timer::analog_set_speed(uint16_t speed) {
-	// start PWM at low frequency at low speed then go to higher frequency
-	if (speed > 300)
-		*tccrb = 0<<WGM13 | 0 << WGM12 | (0<<CS12) | (1<<CS11) | (0<<CS10);	//  prescaler / 8, source=16 MHz / 511 = 3.9 KHz
-	else
-		*tccrb = 0<<WGM13 | 0 << WGM12 | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
-
-	if (speed < 512)
-		*ocra = 511-speed;
-	else
-		*ocra = 511;
-}
-uint16_t DCC_timer::analog_get_speed(void) {
-	return 511-*ocra;
-}
-
-void DCC_timer::analog_set_direction(tdirection direction) {
-	if (direction == off) {
-		*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
-	} else if (direction == forward) {
-		*dcc_port &= ~(1<<PD_L298_IN2); 	// OCxC = 0
-		*dcc_port |= (1<<PD_L298_IN1); 	// OCxB = 1
+void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
+	*tccrb = (0<<WGM13) | (0 << WGM12) | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
+	if (channel == 1) {
+		if (speed < 512)
+			*ocra = 511-speed;
+		else
+			*ocra = 511;
 	} else {
-		*dcc_port &= ~(1<<PD_L298_IN1);	// OCxB = 0
-		*dcc_port |= (1<<PD_L298_IN2);		// OCxC = 1
+		if (speed < 512)
+			*ocrb = 511-speed;
+		else
+			*ocrb = 511;
 	}
 }
-tdirection DCC_timer::analog_get_direction(void) {
-	uint8_t temp;
-		temp = ((*dcc_port) & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
-	switch (temp) {
-	default:
-	case 0: return off;
-	case (1<<PD_L298_IN1): return forward;
-	case (1<<PD_L298_IN2): return backward;
-	}
+uint16_t DCC_timer::analog_get_speed(uint8_t channel) {
+	if (channel == 1)
+		return 511-*ocra;
+	else
+		return 511-*ocrb;
 }
 
+void DCC_timer::analog_set_direction(uint8_t channel, tdirection direction) {
+	if (channel == 1) {
+		if (direction == off) {
+			*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
+		} else if (direction == forward) {
+			*dcc_port &= ~(1<<PD_L298_IN2);
+			*dcc_port |= (1<<PD_L298_IN1);
+		} else {
+			*dcc_port &= ~(1<<PD_L298_IN1);
+			*dcc_port |= (1<<PD_L298_IN2);
+		}
+	} else {
+		if (direction == off) {
+			*dcc_port &= ~((1<<PD_L298_IN3)|(1<<PD_L298_IN4));		// OCxB, OCxC = 0
+		} else if (direction == forward) {
+			*dcc_port &= ~(1<<PD_L298_IN4);
+			*dcc_port |= (1<<PD_L298_IN3);
+		} else {
+			*dcc_port &= ~(1<<PD_L298_IN3);
+			*dcc_port |= (1<<PD_L298_IN4);
+		}
+	}
+}
+tdirection DCC_timer::analog_get_direction(uint8_t channel) {
+	uint8_t temp;
+	if (channel == 1) {
+		temp = ((*dcc_port) & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
+		switch (temp) {
+		default:
+		case 0: return off;
+		case (1<<PD_L298_IN1): return forward;
+		case (1<<PD_L298_IN2): return backward;
+		}
+	} else {
+		temp = ((*dcc_port) & ((1<<PD_L298_IN3)|(1<<PD_L298_IN4)));
+		switch (temp) {
+		default:
+		case 0: return off;
+		case (1<<PD_L298_IN3): return forward;
+		case (1<<PD_L298_IN4): return backward;
+
+		}
+
+	}
+}

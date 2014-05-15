@@ -41,9 +41,11 @@
 
 // Port B
 
-#define PortB0			0		// out
+//#define PortB0			0		// out
+#define PB_NRF_CSN		0		// out
 #define PB1_OC1A 		1		// out
-#define PB_NRF_CSN		2		// out
+//#define PB_NRF_CSN		2		// out
+#define PB2_OC1B		2		// out
 #define MOSI			3		// out
 #define MISO			4		// in
 #define SCK				5		// out
@@ -73,8 +75,8 @@
 #define PortD1 			1		// out (TX)
 #define PD_NRF_IRQ		2		// in (INT0)
 #define PD_NRF_CE		3		// out
-#define PD_PortD4		4		// out
-#define PD_PortD5		5		// out
+#define PD_L298_IN3		4		// out
+#define PD_L298_IN4		5		// out
 #define PD_L298_IN1		6		// out
 #define PD_L298_IN2		7		// out
 

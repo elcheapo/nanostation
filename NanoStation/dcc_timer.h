@@ -70,15 +70,15 @@ public:
 //	void digital_off(void);
 //	void set_direct(void);
 //	void set_queue(void);
-	void analog_set_speed(uint16_t speed);
-	uint16_t analog_get_speed(void);
-	void analog_set_direction(tdirection direction);
-	tdirection analog_get_direction(void);
+	void analog_set_speed(uint8_t channel, uint16_t speed);
+	uint16_t analog_get_speed(uint8_t channel);
+	void analog_set_direction(uint8_t channel, tdirection direction);
+	tdirection analog_get_direction(uint8_t channel);
 
 	void timer_overflow_interrupt(void);
-	void abort_dcc(void);
+//	void abort_dcc(void);
 
-	tmode get_mode(void);
+//	tmode get_mode(void);
 //	uint8_t dcc_is_powered(void);
 
 //	uint8_t dcc_busy(void);
