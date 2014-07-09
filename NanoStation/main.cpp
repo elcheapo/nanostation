@@ -9,6 +9,7 @@
 
 
 #include "elcheapo_remote.h"
+#include "organizer.h"
 #include "timer0.h"
 #include "dcc_timer.h"
 

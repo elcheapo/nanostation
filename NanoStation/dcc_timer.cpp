@@ -6,12 +6,11 @@
  */
 
 #include "elcheapo_remote.h"
-//#include "organizer.h"
+#include "organizer.h"
 //#include "adc.h"
 #include "dcc_timer.h"
 
 
-#undef LOCAL_DEBUG
 #undef DEBUG
 #undef DEBUG_IT
 
@@ -61,7 +60,7 @@ ISR(TIMER1_OVF_vect) {
 #endif
 #endif
 
-#if 0
+
 
 #ifdef USE_TIMER3
 DCC_timer timer3 (&TCCR3A,&TIMSK3,&TIFR3,&DDRE); // Voie 1
@@ -104,18 +103,12 @@ ISR(TIMER5_OVF_vect) {
 #endif
 
 inline void DCC_timer::do_send1(void) {
-#ifdef LOCAL_DEBUG
-	DCC_BIT_HIGH;
-#endif
 	*ocra = (F_CPU / 1000000L) * PERIOD_1;
 	*ocrb = (F_CPU / 1000000L) * PERIOD_1 / 2;
 	*ocrc = (F_CPU / 1000000L) * PERIOD_1 / 2;
 }
 
 inline void DCC_timer::do_send0(void) {
-#ifdef LOCAL_DEBUG
-	DCC_BIT_LOW;
-#endif
 	*ocra = (F_CPU / 1000000L) * PERIOD_0;
 	*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;
 	*ocrc = (F_CPU / 1000000L) * PERIOD_0 / 2;
@@ -123,7 +116,6 @@ inline void DCC_timer::do_send0(void) {
 
 
 void DCC_timer::timer_overflow_interrupt(void) {
-	signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	// Uses timer x in fast PWM / OCRxA = TOP, OCRxB : = toggle on match, OCRxC : inverted output
 	switch (_doi_packet.state) {
 	case DOI_INTER_PACKET: {
@@ -144,9 +136,7 @@ void DCC_timer::timer_overflow_interrupt(void) {
 		if (pkt_ready != 0) {
 			if (_doi_packet.repeat_ctr >= current_message.repeat) {
 				pkt_ready = 0; // DONE processing packet and repeat
-				xSemaphoreGiveFromISR (packet_sent, &xHigherPriorityTaskWoken); // tell the world about it ...
 				_doi_packet.repeat_ctr = 0;
-				if( xHigherPriorityTaskWoken != pdFALSE ) taskYIELD();
 			} else {
 				// send / resend message
 				_doi_packet.state = DOI_PREAMBLE;                           // current state
@@ -201,11 +191,10 @@ void DCC_timer::timer_overflow_interrupt(void) {
 	}
 	case DOI_LAST_BIT: {
 		do_send1();
+		ack_ready = 1; // done sending the packet, if we are waiting for an ack, look for it now ...
 		_doi_packet.state = DOI_INTER_PACKET;
 		_doi_packet.bitcount = 1;
 		_doi_packet.repeat_ctr ++;
-		xSemaphoreGiveFromISR(ready_for_acknowledge, &xHigherPriorityTaskWoken); // tell the world about it ...
-		if( xHigherPriorityTaskWoken != pdFALSE ) taskYIELD();
 		break;
 	}
 	default:
@@ -213,7 +202,7 @@ void DCC_timer::timer_overflow_interrupt(void) {
 		break;
 	}
 }
-#endif
+
 
 #if 0
 void DCC_timer::begin(tmode mode){
@@ -259,24 +248,20 @@ void DCC_timer::begin(tmode mode){
 		}
 	}
 }
+
+#endif
+
 void DCC_timer::abort_dcc(void){
 	pkt_abort = 1;
 }
 
 void DCC_timer::send_dcc_packet(message * current){
 	// MUST be called when pkt_ready is 0
-	if (direct == 0) {
-		current_message = *current;
-		pkt_ready = 1;
-	}
+	current_message = *current;
+	pkt_ready = 1;
+	ack_ready = 0;
 }
 
-void DCC_timer::send_direct_dcc_packet(message * direct) {
-	// MUST be called when pkt_ready is 0
-	current_message = *direct;
-	pkt_ready = 1;
-}
-#endif
 void DCC_timer::begin(tmode mode){
 
 	*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF

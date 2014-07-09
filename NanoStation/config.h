@@ -99,4 +99,26 @@
 typedef enum {dcc_off, analog, digital} tmode;
 typedef enum {off, forward, backward} tdirection;
 
+//------------------------------------------------------------------------
+// define a structure for DCC messages inside OpenDCC
+//------------------------------------------------------------------------
+#define   MAX_DCC_SIZE  5
+
+typedef enum {is_void,
+              is_stop,
+              is_loco,
+              is_acc,
+              is_feedback,
+              is_prog,
+              is_prog_ack}  tmessage;
+
+
+#define NUM_DCC_SPEED_REPEAT   2        // Speed commands are repeated this number
+#define NUM_DCC_ACC_REPEAT     2        // Accessory Commands are repeated this number
+#define NUM_DCC_FUNC_REPEAT    1        // Function Commands are repeated this number
+#define NUM_DCC_POM_REPEAT     3        // Program on the main are repeated this number
+
+#define SIZE_LOCOBUFFER      4       // no of simult. active locos (6 bytes each entry)
+
+
 #endif   // config.h

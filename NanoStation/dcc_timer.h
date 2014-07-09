@@ -46,10 +46,11 @@ private:
 	volatile uint8_t *tifr;
 	volatile uint8_t *ddr;
 
-//	doi _doi_packet;
-//	message current_message;
-//	volatile uint8_t pkt_abort;
-//	volatile uint8_t pkt_ready;
+	doi _doi_packet;
+	message current_message;
+	volatile uint8_t pkt_abort;
+	volatile uint8_t pkt_ready;
+	volatile uint8_t ack_ready;
 //	uint8_t direct;
 //	uint8_t direct_ready;
 
@@ -64,10 +65,10 @@ public:
 			);
 	void begin(tmode mode);
 	void end(void);
-//	void send_dcc_packet(message * current);
+	void send_dcc_packet(message * current);
 //	void send_direct_dcc_packet(message * direct);
-//	void digital_on(void);
-//	void digital_off(void);
+	void digital_on(void);
+	void digital_off(void);
 //	void set_direct(void);
 //	void set_queue(void);
 	void analog_set_speed(uint8_t channel, uint16_t speed);
@@ -76,12 +77,13 @@ public:
 	tdirection analog_get_direction(uint8_t channel);
 
 	void timer_overflow_interrupt(void);
-//	void abort_dcc(void);
+	void abort_dcc(void);
 
-//	tmode get_mode(void);
-//	uint8_t dcc_is_powered(void);
+	tmode get_mode(void);
+	uint8_t dcc_is_powered(void);
 
-//	uint8_t dcc_busy(void);
+	uint8_t dcc_busy(void);
+	uint8_t dcc_ack_ready(void);
 //	uint8_t dcc_queue_busy(void);
 //	xSemaphoreHandle packet_sent;
 //	xSemaphoreHandle ready_for_acknowledge;
@@ -90,29 +92,20 @@ public:
 //	t_adc adc_mode_digital;
 };
 
-#if 0
-inline uint8_t DCC_timer::dcc_queue_busy(void) {
-	if (direct != 0) return 0;
-	return (pkt_ready);
-};
-inline uint8_t DCC_timer::dcc_busy(void) {return (pkt_ready);};
-
-inline void DCC_timer::set_direct(void) {direct=1;};
-inline void DCC_timer::set_queue(void) {direct=0;};
-#endif
-
 #define dcc_port (ddr+1)
 //#define IS_TIMER1 ((uint16_t)(ddr) == 0x24)
+// 328P only has one timer1
+#define IS_TIMER1 (1)
 
-//#define T1_OCRA (0x40)
-//#define T1_OCRB (0x80)
-//#define T1_OCRC (0x80)
+#define T1_OCRA (0x40)
+#define T1_OCRB (0x80)
+#define T1_OCRC (0x80)
 
-//#define T3_OCRA (0x08)
-//#define T3_OCRB (0x10)
-//#define T3_OCRC (0x20)
+#define T3_OCRA (0x08)
+#define T3_OCRB (0x10)
+#define T3_OCRC (0x20)
 
-#if 0
+
 inline void DCC_timer::digital_on(void) {
 	if (IS_TIMER1)
 		*dcc_port |= T1_OCRA;  // Set OCRA in digital
@@ -142,8 +135,8 @@ inline uint8_t DCC_timer::dcc_is_powered(void) {
 	return true;
 }
 
-#endif
-// void dcc_send (void );
+inline uint8_t DCC_timer::dcc_busy(void) {return (pkt_ready);};
+
 
 #ifdef USE_TIMER1
 extern DCC_timer timer1;
