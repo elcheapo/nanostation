@@ -157,9 +157,9 @@ int main(void) {
 		}
 		if (ack == 0) {
 			// No packet received for 1 sec - turn OFF outputs
-			timer1.analog_set_speed(1,0);
+			timer1.analog_set_speed(1,512);
 			timer1.analog_set_direction(1,off);
-			timer1.analog_set_speed(2,0);
+			timer1.analog_set_speed(2,512);
 			timer1.analog_set_direction(2,off);
 
 			Serial.write('S');

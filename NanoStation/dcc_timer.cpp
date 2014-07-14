@@ -289,6 +289,7 @@ void DCC_timer::end(void) {
 
 void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
 	*tccrb = (0<<WGM13) | (0 << WGM12) | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
+	*tccrb = (0<<WGM13) | (0 << WGM12) | (1<<CS12) | (0<<CS11) | (0<<CS10);	//  prescaler / 256, source=16 MHz / 511 = 125 Hz
 	if (channel == 1) {
 		if (speed < 512)
 			*ocra = 511-speed;
