@@ -19,7 +19,7 @@
 #define tccrc (tccra+2)
 #define ocra ((volatile uint16_t *) (tccra+8))
 #define ocrb ((volatile uint16_t *) (tccra+0xa))
-#define ocrc ((volatile uint16_t *) (tccra+0xc))
+//#define ocrc ((volatile uint16_t *) (tccra+0xc))
 #define icr ((volatile uint16_t *) (tccra+6))
 #define tcnt ((volatile uint16_t *) (tccra+4))
 
@@ -29,94 +29,56 @@
 
 DCC_timer::DCC_timer( volatile uint8_t *_tccra,
 		volatile uint8_t *_timsk,
-		volatile uint8_t *_tifr,
-		volatile uint8_t *_ddr) {
+		volatile uint8_t *_tifr) {
 	tccra = _tccra;
 	timsk = _timsk;
 	tifr = _tifr;
-	ddr = _ddr;
-//	direct = 1;
-//	direct_ready = 0;
-//	vSemaphoreCreateBinary(packet_sent);
-//	vSemaphoreCreateBinary(ready_for_acknowledge);
-
 }
 
 
-#ifdef USE_TIMER1
-DCC_timer timer1 (&TCCR1A,&TIMSK1,&TIFR1,&DDRD); // Voie 1 Gare
+// from config.h
+//#define PB1_OC1A 		1		// out
+//#define PB2_OC1B		2		// out
+//#define PD_L298_IN3		4		// out
+//#define PD_L298_IN4		5		// out
+//#define PD_L298_IN1		6		// out
+//#define PD_L298_IN2		7		// out
 
-#if 0
+DCC_timer timer1 (&TCCR1A,&TIMSK1,&TIFR1); // Timer 1 controls DCC signal
+
+
 ISR(TIMER1_OVF_vect) {
-#ifdef DEBUG_IT
-	ENTER_IT;
-#endif
-//	if (adc_mode == digital1) start_adc();
 	timer1.timer_overflow_interrupt();
-#ifdef DEBUG_IT
-	EXIT_IT;
-#endif
 }
-#endif
-#endif
-
-
-
-#ifdef USE_TIMER3
-DCC_timer timer3 (&TCCR3A,&TIMSK3,&TIFR3,&DDRE); // Voie 1
-ISR(TIMER3_OVF_vect) {
-#ifdef DEBUG_IT
-	ENTER_IT;
-#endif
-	if (adc_mode == digital3) start_adc();
-	timer3.timer_overflow_interrupt();
-#ifdef DEBUG_IT
-	EXIT_IT;
-#endif
+ISR(TIMER1_COMPB_vect) {
+	timer1.match_B_interrupt();
 }
-#endif
-#ifdef USE_TIMER4
-DCC_timer timer4 (&TCCR4A,&TIMSK4,&TIFR4,&DDRH); // Voie 2
-ISR(TIMER4_OVF_vect) {
-#ifdef DEBUG_IT
-	ENTER_IT;
-#endif
-	if (adc_mode == digital4) start_adc();
-	timer4.timer_overflow_interrupt();
-#ifdef DEBUG_IT
-	EXIT_IT;
-#endif
-}
-#endif
-#ifdef USE_TIMER5
-DCC_timer timer5 (&TCCR5A,&TIMSK5,&TIFR5,&DDRL); // Voie 2 Gare
-ISR(TIMER5_OVF_vect) {
-#ifdef DEBUG_IT
-	ENTER_IT;
-#endif
-	if (adc_mode == digital5) start_adc();
-	timer5.timer_overflow_interrupt();
-#ifdef DEBUG_IT
-	EXIT_IT;
-#endif
-}
-#endif
 
 inline void DCC_timer::do_send1(void) {
 	*ocra = (F_CPU / 1000000L) * PERIOD_1;
 	*ocrb = (F_CPU / 1000000L) * PERIOD_1 / 2;
-	*ocrc = (F_CPU / 1000000L) * PERIOD_1 / 2;
 }
 
 inline void DCC_timer::do_send0(void) {
 	*ocra = (F_CPU / 1000000L) * PERIOD_0;
 	*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;
-	*ocrc = (F_CPU / 1000000L) * PERIOD_0 / 2;
+}
+
+void DCC_timer::match_B_interrupt(void) {
+	// Clear all signals
+	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+	// Set 2 & 4
+	PORTD |= (1<<PD_L298_IN2) |(1<<PD_L298_IN4);
 }
 
 
 void DCC_timer::timer_overflow_interrupt(void) {
-	// Uses timer x in fast PWM / OCRxA = TOP, OCRxB : = toggle on match, OCRxC : inverted output
+	// Clear all signals
+	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+	// Set 2 & 4
+	PORTD |= (1<<PD_L298_IN1) |(1<<PD_L298_IN3);
+
+	// Uses timer x in fast PWM / OCRxA = TOP, OCRxB : TOV and match B toggle pins
 	switch (_doi_packet.state) {
 	case DOI_INTER_PACKET: {
 		do_send1();
@@ -203,54 +165,6 @@ void DCC_timer::timer_overflow_interrupt(void) {
 	}
 }
 
-
-#if 0
-void DCC_timer::begin(tmode mode){
-	if (mode == digital) {
-		_doi_packet.repeat_ctr = 0;
-		// Setup the timer to the proper mode for DCC waveform generation
-		*tccra = 1 << WGM10| 1 << WGM11
-				| 0 << COM1A0	| 0 << COM1A1
-				| 0 << COM1B0	| 1 << COM1B1		// Non inverted output on OCxB
-				| 1 << COM1C0	| 1 << COM1C1;		// Inverted output on OCxC
-
-		*tccrb = 1<<WGM13 | 1 << WGM12
-				| (0<<CS12) | (0<<CS11) | (1<<CS10);// no prescaler, source = sys_clk
-
-		// start with 0's
-		*ocra = (F_CPU / 1000000L) * PERIOD_0 ;         // 58Âµs = 58*16 = 928 clocks
-		*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;		 // Non inverted output
-		*ocrc = (F_CPU / 1000000L) * PERIOD_0 / 2;		 // Inverted output
-		// Enable Timer Overflow Interrupt
-		*timsk = (1<<TOIE1);
-		if (IS_TIMER1) {
-			*ddr = T1_OCRA|T1_OCRB|T1_OCRC;
-			*dcc_port &= ~T1_OCRA; // start with output OCRA deactivated
-		} else {
-			*ddr = T3_OCRA|T3_OCRB|T3_OCRC;
-			*dcc_port &= ~T3_OCRA; // start with output OCRA deactivated
-		}
-	} else { // Analog
-		*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF
-				| 1 << COM1A0	| 1 << COM1A1		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
-				| 0 << COM1B0	| 0 << COM1B1
-				| 0 << COM1C0	| 0 << COM1C1;
-
-		*tccrb = 0<<WGM13	| 0 << WGM12
-				| (0<<CS12) | (1<<CS11) | (0<<CS10);	//  prescaler / 8, source=16 MHz / 511 = 3.9 KHz
-		*timsk = 0; 				// no timer interrupt
-		if (IS_TIMER1) {
-			*ddr = T1_OCRA|T1_OCRB|T1_OCRC;
-			*dcc_port &= ~(T1_OCRB|T1_OCRC); // start with output OCRB/C deactivated
-		} else {
-			*ddr = T3_OCRA|T3_OCRB|T3_OCRC;
-			*dcc_port &= ~(T3_OCRB|T3_OCRC); // start with output OCRB/C deactivated
-		}
-	}
-}
-
-#endif
-
 void DCC_timer::abort_dcc(void){
 	pkt_abort = 1;
 }
@@ -263,18 +177,38 @@ void DCC_timer::send_dcc_packet(message * current){
 }
 
 void DCC_timer::begin(tmode mode){
+	if (mode == digital) {
+		_doi_packet.repeat_ctr = 0;
+		// Setup the timer to the proper mode for DCC waveform generation
+		*tccra = (1 << WGM10) | (1 << WGM11)
+				| (0 << COM1A0)	| (0 << COM1A1)		// OCx Pin not used on atmega3328P
+				| (0 << COM1B0)	| (0 << COM1B1);		// interrupts toogle the pins on Match and OVF
 
-	*tccra = 0 << WGM10| 1 << WGM11			// PWM Phase correct 9 bit 0-1FF
-			| 1 << COM1A0	| 1 << COM1A1		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
-			| 1 << COM1B0	| 1 << COM1B1;		// PWM signal on OCRB - Inverted, set at match with OCRB, cleared at bottom
+		*tccrb = (1<<WGM13) | (1 << WGM12)
+				| (0<<CS12) | (0<<CS11) | (1<<CS10);// no prescaler, source = sys_clk
 
-	*tccrb = 0<<WGM13	| 0 << WGM12
-			| (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
-	*timsk = 0; 				// no timer interrupt
-	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
-	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
+		// start with 0's
+		*ocra = (F_CPU / 1000000L) * PERIOD_0 ;         // 58µs = 58*16 = 928 clocks
+		*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;		 // use IT to toggle pins
+		// Enable Timer Overflow and match on B Interrupts
+		*timsk = ((1<<TOIE1) | (1<<OCIE1B));
+		// Now set the I/O pins to start digital signal
+		DDRD |= (1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4);
+		PORTD |=  (1<<PD_L298_IN1) | (1<<PD_L298_IN3);
+		DDRB |= (1<<PB1_OC1A) | (1<<PB2_OC1B);
+		PORTB |= (1<<PB1_OC1A) | (1<<PB2_OC1B);
+	} else { // Analog
+		*tccra = (0 << WGM10) | (1 << WGM11)			// PWM Phase correct 9 bit 0-1FF
+				| (1 << COM1A0)	| (1 << COM1A1)		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
+				| (1 << COM1B0)	| (1 << COM1B1);		// PWM signal on OCRB - Inverted, set at match with OCRB, cleared at bottom
+
+		*tccrb = (0<<WGM13)	| (0 << WGM12)
+				| (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
+		*timsk = 0; 				// no timer interrupt
+		DDRD = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
+		PORTD &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
+	}
 }
-
 void DCC_timer::end(void) {
 	*timsk = 0; // disable timer interrupt
 	*tccra = 0 << WGM10| 0 << WGM11
@@ -283,8 +217,8 @@ void DCC_timer::end(void) {
 //			| 0 << COM1C0	| 0 << COM1C1;		// No output on OCxC
 	*tccrb = 0<<WGM13 | 0 << WGM12
 			| (0<<CS12) | (0<<CS11) | (0<<CS10);// timer stopped, no clock
-	*ddr = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
-	*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
+	DDRD = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
+	PORTD &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
 }
 
 void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
@@ -312,30 +246,30 @@ uint16_t DCC_timer::analog_get_speed(uint8_t channel) {
 void DCC_timer::analog_set_direction(uint8_t channel, tdirection direction) {
 	if (channel == 1) {
 		if (direction == off) {
-			*dcc_port &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
+			PORTD &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
 		} else if (direction == forward) {
-			*dcc_port &= ~(1<<PD_L298_IN2);
-			*dcc_port |= (1<<PD_L298_IN1);
+			PORTD &= ~(1<<PD_L298_IN2);
+			PORTD |= (1<<PD_L298_IN1);
 		} else {
-			*dcc_port &= ~(1<<PD_L298_IN1);
-			*dcc_port |= (1<<PD_L298_IN2);
+			PORTD &= ~(1<<PD_L298_IN1);
+			PORTD |= (1<<PD_L298_IN2);
 		}
 	} else {
 		if (direction == off) {
-			*dcc_port &= ~((1<<PD_L298_IN3)|(1<<PD_L298_IN4));		// OCxB, OCxC = 0
+			PORTD &= ~((1<<PD_L298_IN3)|(1<<PD_L298_IN4));		// OCxB, OCxC = 0
 		} else if (direction == forward) {
-			*dcc_port &= ~(1<<PD_L298_IN4);
-			*dcc_port |= (1<<PD_L298_IN3);
+			PORTD &= ~(1<<PD_L298_IN4);
+			PORTD |= (1<<PD_L298_IN3);
 		} else {
-			*dcc_port &= ~(1<<PD_L298_IN3);
-			*dcc_port |= (1<<PD_L298_IN4);
+			PORTD &= ~(1<<PD_L298_IN3);
+			PORTD |= (1<<PD_L298_IN4);
 		}
 	}
 }
 tdirection DCC_timer::analog_get_direction(uint8_t channel) {
 	uint8_t temp;
 	if (channel == 1) {
-		temp = ((*dcc_port) & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
+		temp = ( PORTD & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
 		switch (temp) {
 		default:
 		case 0: return off;
@@ -343,7 +277,7 @@ tdirection DCC_timer::analog_get_direction(uint8_t channel) {
 		case (1<<PD_L298_IN2): return backward;
 		}
 	} else {
-		temp = ((*dcc_port) & ((1<<PD_L298_IN3)|(1<<PD_L298_IN4)));
+		temp = ( PORTD & ((1<<PD_L298_IN3)|(1<<PD_L298_IN4)));
 		switch (temp) {
 		default:
 		case 0: return off;
