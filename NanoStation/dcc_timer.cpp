@@ -75,7 +75,7 @@ void DCC_timer::match_B_interrupt(void) {
 void DCC_timer::timer_overflow_interrupt(void) {
 	// Clear all signals
 	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
-	// Set 2 & 4
+	// Set 1 & 3
 	PORTD |= (1<<PD_L298_IN1) |(1<<PD_L298_IN3);
 
 	// Uses timer x in fast PWM / OCRxA = TOP, OCRxB : TOV and match B toggle pins
@@ -200,10 +200,10 @@ void DCC_timer::begin(tmode mode){
 	} else { // Analog
 		*tccra = (0 << WGM10) | (1 << WGM11)			// PWM Phase correct 9 bit 0-1FF
 				| (1 << COM1A0)	| (1 << COM1A1)		// PWM signal on OCRA - Inverted, set at match with OCRA, cleared at bottom
-				| (1 << COM1B0)	| (1 << COM1B1);		// PWM signal on OCRB - Inverted, set at match with OCRB, cleared at bottom
+				| (1 << COM1B0)	| (1 << COM1B1);	// PWM signal on OCRB - Inverted, set at match with OCRB, cleared at bottom
 
 		*tccrb = (0<<WGM13)	| (0 << WGM12)
-				| (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
+				| (1<<CS12) | (0<<CS11) | (0<<CS10);	//  prescaler / 256, source=16 MHz / 511 = 125 Hz
 		*timsk = 0; 				// no timer interrupt
 		DDRD = (1<<PD_L298_IN1) | (1<<PD_L298_IN2) | (1<<PD_L298_IN3) | (1<<PD_L298_IN4) ;
 		PORTD &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2)|(1<<PD_L298_IN3)|(1<<PD_L298_IN4)); // start with output IN1/IN2/IN3/IN4 deactivated
@@ -222,7 +222,7 @@ void DCC_timer::end(void) {
 }
 
 void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
-	*tccrb = (0<<WGM13) | (0 << WGM12) | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
+//	*tccrb = (0<<WGM13) | (0 << WGM12) | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
 	*tccrb = (0<<WGM13) | (0 << WGM12) | (1<<CS12) | (0<<CS11) | (0<<CS10);	//  prescaler / 256, source=16 MHz / 511 = 125 Hz
 	if (channel == 1) {
 		if (speed < 512)
@@ -288,3 +288,22 @@ tdirection DCC_timer::analog_get_direction(uint8_t channel) {
 
 	}
 }
+
+// Turn ON or OFF the two channels for DCC
+// disabling one allows for programming operation
+
+void DCC_timer::digital_on(uint8_t channel) {
+	if (channel == 0) {
+		PORTB |= (1<<PB1_OC1A);
+	} else {
+		PORTB |= (1<<PB2_OC1B);
+	}
+};
+void DCC_timer::digital_off(uint8_t channel) {
+	if (channel == 0) {
+		PORTB &= ~(1<<PB1_OC1A);
+	} else {
+		PORTB &= ~(1<<PB2_OC1B);
+	}
+
+};

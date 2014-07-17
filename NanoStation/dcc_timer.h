@@ -59,8 +59,8 @@ public:
 	void begin(tmode mode);
 	void end(void);
 	void send_dcc_packet(message * current);
-	void digital_on(void);
-	void digital_off(void);
+	void digital_on(uint8_t channel);
+	void digital_off(uint8_t channel);
 	void analog_set_speed(uint8_t channel, uint16_t speed);
 	uint16_t analog_get_speed(uint8_t channel);
 	void analog_set_direction(uint8_t channel, tdirection direction);
@@ -80,19 +80,6 @@ public:
 #define dcc_port (ddr+1)
 //#define IS_TIMER1 ((uint16_t)(ddr) == 0x24)
 // 328P only has one timer1
-#if 0
-inline void DCC_timer::digital_on(void) {
-	if (IS_TIMER1)
-		*dcc_port |= T1_OCRA;  // Set OCRA in digital
-	else
-		*dcc_port |= T3_OCRA;
-};
-inline void DCC_timer::digital_off(void) {
-	if (IS_TIMER1)
-		*dcc_port &= ~T1_OCRA;  // Clear OCRA in digital
-	else
-		*dcc_port &= ~T3_OCRA;
-};
 
 inline tmode DCC_timer::get_mode(void) {
 	uint8_t mode = *tccra & 0x03;
@@ -102,14 +89,10 @@ inline tmode DCC_timer::get_mode(void) {
 }
 
 inline uint8_t DCC_timer::dcc_is_powered(void) {
-	if (IS_TIMER1) {
-		if ((*dcc_port & T1_OCRA) == 0) return false;
-	} else {
-		if ((*dcc_port & T3_OCRA) == 0) return false;
-	}
-	return true;
+	if ((PORTB & (1<<PB1_OC1A)) != 0)
+		return true;
+	return false;
 }
-#endif
 
 inline uint8_t DCC_timer::dcc_busy(void) {return (pkt_ready);};
 
