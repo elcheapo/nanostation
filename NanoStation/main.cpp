@@ -78,7 +78,6 @@ int main(void) {
 
 	Serial.begin(115200);
 	init_timer0_tick();
-	timer1.begin(analog);
 	// enable interrupts
 	__builtin_avr_sei ();
 
@@ -123,6 +122,8 @@ int main(void) {
 	}
 
 	if (mode == digital) {
+		Serial.println(F("Digital"));
+
 		timer1.begin(digital);
 		timer1.digital_on(0);
 		timer1.digital_on(1);
@@ -204,6 +205,7 @@ int main(void) {
 		}
 		// Packet should have been received let's try to see
 	} else { // analog
+		Serial.println(F("Analog"));
 		timer1.begin(analog);
 		while (1) {
 			status = hal_nrf_get_status();
