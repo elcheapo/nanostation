@@ -623,6 +623,7 @@ bool enqueue (const message * new_message) {
 void run_organizer(void) {
 	message search_message;
 	if ( !timer1.dcc_busy()) {
+		search_locobuffer(&search_message);
 		if (send_BC_flag == 1) {
 			timer1.send_dcc_packet(&DCC_BC_Stop);
 		} else {
