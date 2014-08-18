@@ -224,7 +224,7 @@ void DCC_timer::end(void) {
 void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
 //	*tccrb = (0<<WGM13) | (0 << WGM12) | (0<<CS12) | (1<<CS11) | (1<<CS10);	//  prescaler / 64, source=16 MHz / 511 = 500 Hz
 	*tccrb = (0<<WGM13) | (0 << WGM12) | (1<<CS12) | (0<<CS11) | (0<<CS10);	//  prescaler / 256, source=16 MHz / 511 = 125 Hz
-	if (channel == 1) {
+	if (channel == CHANNEL_1) {
 		if (speed < 512)
 			*ocra = 511-speed;
 		else
@@ -237,14 +237,14 @@ void DCC_timer::analog_set_speed(uint8_t channel, uint16_t speed) {
 	}
 }
 uint16_t DCC_timer::analog_get_speed(uint8_t channel) {
-	if (channel == 1)
+	if (channel == CHANNEL_1)
 		return 511-*ocra;
 	else
 		return 511-*ocrb;
 }
 
 void DCC_timer::analog_set_direction(uint8_t channel, tdirection direction) {
-	if (channel == 1) {
+	if (channel == CHANNEL_1) {
 		if (direction == off) {
 			PORTD &= ~((1<<PD_L298_IN1)|(1<<PD_L298_IN2));		// OCxB, OCxC = 0
 		} else if (direction == forward) {
@@ -268,7 +268,7 @@ void DCC_timer::analog_set_direction(uint8_t channel, tdirection direction) {
 }
 tdirection DCC_timer::analog_get_direction(uint8_t channel) {
 	uint8_t temp;
-	if (channel == 1) {
+	if (channel == CHANNEL_1) {
 		temp = ( PORTD & ((1<<PD_L298_IN1)|(1<<PD_L298_IN2)));
 		switch (temp) {
 		default:
@@ -293,14 +293,14 @@ tdirection DCC_timer::analog_get_direction(uint8_t channel) {
 // disabling one allows for programming operation
 
 void DCC_timer::digital_on(uint8_t channel) {
-	if (channel == 0) {
+	if (channel == CHANNEL_1) {
 		PORTB |= (1<<PB1_OC1A);
 	} else {
 		PORTB |= (1<<PB2_OC1B);
 	}
 };
 void DCC_timer::digital_off(uint8_t channel) {
-	if (channel == 0) {
+	if (channel == CHANNEL_1) {
 		PORTB &= ~(1<<PB1_OC1A);
 	} else {
 		PORTB &= ~(1<<PB2_OC1B);

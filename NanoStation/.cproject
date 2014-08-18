@@ -21,7 +21,7 @@
 							<option id="de.innot.avreclipse.toolchain.options.toolchain.size.app.debug.1462564972" name="Print Size" superClass="de.innot.avreclipse.toolchain.options.toolchain.size.app.debug"/>
 							<option id="de.innot.avreclipse.toolchain.options.toolchain.avrdude.app.debug.1462578294" name="AVRDude" superClass="de.innot.avreclipse.toolchain.options.toolchain.avrdude.app.debug"/>
 							<targetPlatform id="de.innot.avreclipse.targetplatform.winavr.app.debug.1984547313" name="AVR Cross-Target" superClass="de.innot.avreclipse.targetplatform.winavr.app.debug"/>
-							<builder autoBuildTarget="all" buildPath="${workspace_loc:/NanoStation}/Debug" cleanBuildTarget="clean" id="org.eclipse.cdt.build.core.internal.builder.1105796784" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
+							<builder buildPath="${workspace_loc:/NanoStation}/Debug" id="org.eclipse.cdt.build.core.internal.builder.1413453867" superClass="org.eclipse.cdt.build.core.internal.builder"/>
 							<tool id="de.innot.avreclipse.tool.assembler.winavr.app.debug.1742821731" name="AVR Assembler" superClass="de.innot.avreclipse.tool.assembler.winavr.app.debug">
 								<option id="de.innot.avreclipse.assembler.option.debug.level.168014361" name="Generate Debugging Info" superClass="de.innot.avreclipse.assembler.option.debug.level"/>
 								<inputType id="de.innot.avreclipse.tool.assembler.input.763568654" superClass="de.innot.avreclipse.tool.assembler.input"/>
@@ -160,4 +160,5 @@
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>
