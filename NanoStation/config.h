@@ -100,6 +100,11 @@
 typedef enum {dcc_off, analog, digital} tmode;
 typedef enum {off, forward, backward} tdirection;
 
+
+#define CHANNEL_1 0
+#define CHANNEL_2 1
+
+
 //------------------------------------------------------------------------
 // define a structure for DCC messages inside OpenDCC
 //------------------------------------------------------------------------
