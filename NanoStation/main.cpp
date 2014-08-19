@@ -127,6 +127,11 @@ int main(void) {
 		timer1.begin(digital);
 		timer1.digital_on(0);
 		timer1.digital_on(1);
+		new_loco(dcc_address_1);
+		new_loco(dcc_address_2);
+		//Switch on lights
+		do_loco_func_grp0(dcc_address_1,1);
+		do_loco_func_grp0(dcc_address_2,1);
 
 		while (1) {
 			status = hal_nrf_get_status();
