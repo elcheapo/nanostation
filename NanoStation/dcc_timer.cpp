@@ -7,12 +7,13 @@
 
 #include "elcheapo_remote.h"
 #include "organizer.h"
+#include "HardwareSerial.h"
 //#include "adc.h"
 #include "dcc_timer.h"
 
 
 #undef DEBUG
-#undef DEBUG_IT
+#define DEBUG_IT
 
 // Offsets from TCCRA for the other registers in the same timer
 #define tccrb (tccra+1)
@@ -33,6 +34,7 @@ DCC_timer::DCC_timer( volatile uint8_t *_tccra,
 	tccra = _tccra;
 	timsk = _timsk;
 	tifr = _tifr;
+	pkt_ready=0;
 }
 
 
@@ -116,8 +118,12 @@ void DCC_timer::timer_overflow_interrupt(void) {
 	case DOI_PREAMBLE: {
 		do_send1();
 		_doi_packet.bitcount--;
-		if (_doi_packet.bitcount == 0)
+		if (_doi_packet.bitcount == 0) {
 			_doi_packet.state = DOI_BSTART;
+#ifdef DEBUG_IT
+			Serial.println();
+#endif
+		}
 		break;
 	}
 	case DOI_BSTART: {
@@ -131,6 +137,10 @@ void DCC_timer::timer_overflow_interrupt(void) {
 			_doi_packet.xor_byte ^= _doi_packet.cur_byte;
 			_doi_packet.state = DOI_BYTE;
 			_doi_packet.bitcount = 8;
+#ifdef DEBUG_IT
+			Serial.print(_doi_packet.cur_byte,16);
+			Serial.write('-');
+#endif
 		}
 		break;
 	}
@@ -182,14 +192,14 @@ void DCC_timer::begin(tmode mode){
 		// Setup the timer to the proper mode for DCC waveform generation
 		*tccra = (1 << WGM10) | (1 << WGM11)
 				| (0 << COM1A0)	| (0 << COM1A1)		// OCx Pin not used on atmega3328P
-				| (0 << COM1B0)	| (0 << COM1B1);		// interrupts toogle the pins on Match and OVF
+				| (0 << COM1B0)	| (0 << COM1B1);	// interrupts toogle the pins on Match and OVF
 
 		*tccrb = (1<<WGM13) | (1 << WGM12)
 				| (0<<CS12) | (0<<CS11) | (1<<CS10);// no prescaler, source = sys_clk
 
 		// start with 0's
-		*ocra = (F_CPU / 1000000L) * PERIOD_0 ;         // 58µs = 58*16 = 928 clocks
-		*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;		 // use IT to toggle pins
+		*ocra = (F_CPU / 1000000L) * PERIOD_0 ;         // 58Âµs = 58*16 = 928 clocks
+		*ocrb = (F_CPU / 1000000L) * PERIOD_0 / 2;		// use IT to toggle pins
 		// Enable Timer Overflow and match on B Interrupts
 		*timsk = ((1<<TOIE1) | (1<<OCIE1B));
 		// Now set the I/O pins to start digital signal

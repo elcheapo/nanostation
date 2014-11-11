@@ -85,6 +85,7 @@ int main(void) {
 	dcc_address_2 = 4;
 
 	radio_pl_init_prx();
+	timer1.end();
 
 	Serial.println(F("Nano Station"));
 	Serial.write('>');
@@ -93,6 +94,7 @@ int main(void) {
 
 	// Now decide if we want to do analog (POT to the right > 750) or digital (POT to the left < 250)
 	while (1) {
+		Serial.write('-');
 		status = hal_nrf_get_status();
 		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
 		if ((fifo_status & 0x01) == 0) { // a packet is available
@@ -102,6 +104,7 @@ int main(void) {
 				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
 				// clear IRQ source
 				hal_nrf_get_clear_irq_flags();
+				Serial.write('#');
 			}
 			speed = (radio_data[3] << 8) + radio_data[4];
 			if (speed > 750 ) {
@@ -125,13 +128,19 @@ int main(void) {
 		Serial.println(F("Digital"));
 
 		timer1.begin(digital);
-		timer1.digital_on(0);
-		timer1.digital_on(1);
+		timer1.digital_on(CHANNEL_1);
+		timer1.digital_on(CHANNEL_2);
 		new_loco(dcc_address_1);
 		new_loco(dcc_address_2);
 		//Switch on lights
 		do_loco_func_grp0(dcc_address_1,1);
 		do_loco_func_grp0(dcc_address_2,1);
+
+		// Start in digital , send 30 RESET so the decoder switches to digital
+		DCC_Reset.repeat = 30;
+		timer1.send_dcc_packet(&DCC_Reset);
+		DCC_Reset.repeat = 1;
+
 
 		while (1) {
 			status = hal_nrf_get_status();
@@ -151,17 +160,20 @@ int main(void) {
 				break;
 					 */
 					case 2:
+						// in case we turned off the output after radio link loss
+						timer1.digital_on(CHANNEL_1);
+						timer1.digital_on(CHANNEL_2);
 						speed = (radio_data[3] << 8) + radio_data[4];
 						if (speed > 512) {
 							do_loco_speed(dcc_address_1, (speed - 512) / 4);
 						} else {
-							do_loco_speed(dcc_address_1, (512 - speed) / 4);
+							do_loco_speed(dcc_address_1, 0x80 | ((512 - speed) / 4) );
 						}
 						speed = (radio_data[5] << 8) + radio_data[6];
 						if (speed > 512) {
 							do_loco_speed(dcc_address_2, (speed - 512) / 4);
 						} else {
-							do_loco_speed(dcc_address_2, (512 - speed) / 4);
+							do_loco_speed(dcc_address_2, 0x80 | ((512 - speed) / 4) );
 						}
 						break;
 					default:
@@ -200,11 +212,8 @@ int main(void) {
 			}
 			if (ack == 0) {
 				// No packet received for 1 sec - turn OFF outputs
-				timer1.analog_set_speed(1,512);
-				timer1.analog_set_direction(1,off);
-				timer1.analog_set_speed(2,512);
-				timer1.analog_set_direction(2,off);
-
+				timer1.digital_off(CHANNEL_1);
+				timer1.digital_off(CHANNEL_2);
 				Serial.write('S');
 			}
 		}
@@ -216,10 +225,12 @@ int main(void) {
 			status = hal_nrf_get_status();
 
 			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
+#ifdef DEBUG
 			Serial.print(F("St:"));
 			Serial.println(status,16);
 			Serial.print(F("Fi:"));
 			Serial.println(fifo_status,16);
+#endif
 			//		if ((status & (1<<HAL_NRF_RX_DR)) != 0) { // a packet is available
 			if ((fifo_status & 0x01) == 0) { // a packet is available
 				// get it
@@ -244,9 +255,9 @@ int main(void) {
 					 */
 					case 2:
 						speed = (radio_data[3] << 8) + radio_data[4];
-						pot_to_speed(1, &timer1, speed);
+						pot_to_speed(CHANNEL_1, &timer1, speed);
 						speed = (radio_data[5] << 8) + radio_data[6];
-						pot_to_speed(2, &timer1, speed);
+						pot_to_speed(CHANNEL_2, &timer1, speed);
 						break;
 						//				hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
 						/* Ignore other stuff */
@@ -281,10 +292,10 @@ int main(void) {
 			}
 			if (ack == 0) {
 				// No packet received for 1 sec - turn OFF outputs
-				timer1.analog_set_speed(1,512);
-				timer1.analog_set_direction(1,off);
-				timer1.analog_set_speed(2,512);
-				timer1.analog_set_direction(2,off);
+				timer1.analog_set_speed(CHANNEL_1,512);
+				timer1.analog_set_direction(CHANNEL_1,off);
+				timer1.analog_set_speed(CHANNEL_2,512);
+				timer1.analog_set_direction(CHANNEL_2,off);
 
 				Serial.write('S');
 			}

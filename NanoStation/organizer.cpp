@@ -321,7 +321,7 @@ void build_function_grp4(int nr, uint8_t func, message *new_message) {
 	} else {
 		new_message->dcc[index++] = (nr & 0x7F);
 	}
-	new_message->dcc[index++] = 0b11110000;
+	new_message->dcc[index++] = 0b11011110;
 	new_message->dcc[index++] = func;
 	new_message->size = index;
 }
@@ -340,7 +340,7 @@ void build_function_grp5(int nr, uint8_t func, message *new_message) {
 	} else {
 		new_message->dcc[index++] = (nr & 0x7F);
 	}
-	new_message->dcc[index++] = 0b11111000;
+	new_message->dcc[index++] = 0b11011111;
 	new_message->dcc[index++] = func;
 	new_message->size = index;
 }
