@@ -13,7 +13,7 @@
 
 
 #undef DEBUG
-#define DEBUG_IT
+#undef DEBUG_IT
 
 // Offsets from TCCRA for the other registers in the same timer
 #define tccrb (tccra+1)
@@ -68,17 +68,33 @@ inline void DCC_timer::do_send0(void) {
 
 void DCC_timer::match_B_interrupt(void) {
 	// Clear all signals
-	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+//	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
 	// Set 2 & 4
-	PORTD |= (1<<PD_L298_IN2) |(1<<PD_L298_IN4);
+//	PORTD |= (1<<PD_L298_IN2) |(1<<PD_L298_IN4);
+	// This should give a straight level switching without glitches around 0
+	// so the DCC decoders recognize the DCC signal
+	PORTD ^= ((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
 }
 
 
 void DCC_timer::timer_overflow_interrupt(void) {
 	// Clear all signals
-	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+//	PORTD &= ~((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
 	// Set 1 & 3
-	PORTD |= (1<<PD_L298_IN1) |(1<<PD_L298_IN3);
+//	PORTD |= (1<<PD_L298_IN1) |(1<<PD_L298_IN3);
+	// This should give a straight level switching without glitches around 0
+	// so the DCC decoders recognize the DCC signal
+	PORTD ^= ((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+	// Now doublecheck if we have a coherent signal - just in case
+	uint8_t i = PORTD & ((1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4));
+
+	if ( (i == ((1<<PD_L298_IN1) | (1<<PD_L298_IN3)) ) || (i == ((1<<PD_L298_IN2) | (1<<PD_L298_IN4)) ) ) {
+		// Signal is OK
+	} else {
+		// start clean
+		PORTD |= (1<<PD_L298_IN1) |(1<<PD_L298_IN3);
+		PORTD &= ~((1<<PD_L298_IN2) | (1<<PD_L298_IN4));
+	}
 
 	// Uses timer x in fast PWM / OCRxA = TOP, OCRxB : TOV and match B toggle pins
 	switch (_doi_packet.state) {
@@ -205,6 +221,8 @@ void DCC_timer::begin(tmode mode){
 		// Now set the I/O pins to start digital signal
 		DDRD |= (1<<PD_L298_IN1) | (1<<PD_L298_IN2) |(1<<PD_L298_IN3) |(1<<PD_L298_IN4);
 		PORTD |=  (1<<PD_L298_IN1) | (1<<PD_L298_IN3);
+		PORTD &= ~((1<<PD_L298_IN2) | (1<<PD_L298_IN4));
+
 		DDRB |= (1<<PB1_OC1A) | (1<<PB2_OC1B);
 		PORTB |= (1<<PB1_OC1A) | (1<<PB2_OC1B);
 	} else { // Analog

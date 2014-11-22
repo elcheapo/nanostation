@@ -88,13 +88,13 @@ int main(void) {
 	timer1.end();
 
 	Serial.println(F("Nano Station"));
-	Serial.write('>');
+//	Serial.write('>');
 
 	CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
 
 	// Now decide if we want to do analog (POT to the right > 750) or digital (POT to the left < 250)
 	while (1) {
-		Serial.write('-');
+//		Serial.write('-');
 		status = hal_nrf_get_status();
 		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
 		if ((fifo_status & 0x01) == 0) { // a packet is available
@@ -104,7 +104,7 @@ int main(void) {
 				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
 				// clear IRQ source
 				hal_nrf_get_clear_irq_flags();
-				Serial.write('#');
+//				Serial.write('#');
 			}
 			speed = (radio_data[3] << 8) + radio_data[4];
 			if (speed > 750 ) {
@@ -206,7 +206,7 @@ int main(void) {
 				/* otherwise, do we have someting going on for the radio */
 				if (radio_activity()) {
 					ack=1;
-					Serial.println(F("#"));
+//					Serial.println(F("#"));
 					break;
 				}
 			}
@@ -214,7 +214,7 @@ int main(void) {
 				// No packet received for 1 sec - turn OFF outputs
 				timer1.digital_off(CHANNEL_1);
 				timer1.digital_off(CHANNEL_2);
-				Serial.write('S');
+//				Serial.write('S');
 			}
 		}
 		// Packet should have been received let's try to see
@@ -286,7 +286,7 @@ int main(void) {
 			while (!check_radio_timeout()) {
 				if (radio_activity()) {
 					ack=1;
-					Serial.println(F("#"));
+//					Serial.println(F("#"));
 					break;
 				}
 			}
@@ -297,7 +297,7 @@ int main(void) {
 				timer1.analog_set_speed(CHANNEL_2,512);
 				timer1.analog_set_direction(CHANNEL_2,off);
 
-				Serial.write('S');
+//				Serial.write('S');
 			}
 			// Packet should have been received let's try to see
 		}
