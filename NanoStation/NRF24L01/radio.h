@@ -93,4 +93,6 @@ inline uint8_t radio_activity(void) {
 		return false;
 }
 
+
+uint8_t radio_get_packet(uint8_t * packet, uint8_t * count);
 #endif

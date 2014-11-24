@@ -27,6 +27,9 @@ uint16_t dcc_address_2;
 
 #define POINT_MORT_MARGIN 16
 
+// Re-initialize radio after n Seconds
+#define MAX_TIMEOUTS 5
+
 void pot_to_speed (uint8_t channel, DCC_timer * timer, uint16_t pot) {
 	if (pot > (512 + POINT_MORT_MARGIN)) {
 		timer->analog_set_speed(channel, pot - (512 + POINT_MORT_MARGIN) );
@@ -60,7 +63,7 @@ void pot_to_speed (uint8_t channel, DCC_timer * timer, uint16_t pot) {
 }
 
 int main(void) {
-	uint8_t status,ack,fifo_status;
+	uint8_t status, timeout_counter;
 	uint8_t count;
 	uint16_t speed;
 
@@ -84,28 +87,18 @@ int main(void) {
 	dcc_address_1 = 3;
 	dcc_address_2 = 4;
 
-	radio_pl_init_prx();
 	timer1.end();
 
 	Serial.println(F("Nano Station"));
 //	Serial.write('>');
 
+	radio_pl_init_prx();
 	CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-
+	timeout_counter = 0;
 	// Now decide if we want to do analog (POT to the right > 750) or digital (POT to the left < 250)
 	while (1) {
-//		Serial.write('-');
-		status = hal_nrf_get_status();
-		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-		if ((fifo_status & 0x01) == 0) { // a packet is available
-			// get it
-			count = hal_nrf_read_reg(R_RX_PL_WID);
-			if (count != 0) {
-				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
-				// clear IRQ source
-				hal_nrf_get_clear_irq_flags();
-//				Serial.write('#');
-			}
+		status = radio_get_packet(radio_data, &count);
+		if (status == OK) {
 			speed = (radio_data[3] << 8) + radio_data[4];
 			if (speed > 750 ) {
 				mode = analog;
@@ -115,13 +108,16 @@ int main(void) {
 				mode = digital;
 				break;
 			}
-		}
-		set_radio_timeout(1000/4);
-		while (!check_radio_timeout()) {
-			if (radio_activity()) {
-				break;
+		} else { // Timeout receiving radio packet just wait, but re-initialize radio just in case after a while
+			timeout_counter ++;
+			if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+				CE_LOW();
+				radio_pl_init_prx();
+				CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
+				timeout_counter = 0;
 			}
-		}
+
+		};
 	}
 
 	if (mode == digital) {
@@ -143,110 +139,54 @@ int main(void) {
 
 
 		while (1) {
-			status = hal_nrf_get_status();
-			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-			if ((fifo_status & 0x01) == 0) { // a packet is available
-				// get it
-				count = hal_nrf_read_reg(R_RX_PL_WID);
-				if (count != 0) {
-					hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
-					// clear IRQ source
-					hal_nrf_get_clear_irq_flags();
-					switch (radio_data[0]) {
-					/*
+			status = radio_get_packet(radio_data, &count);
+			if (status == OK ) {
+				switch (radio_data[0]) {
+				/*
   				case 1:
 				speed = (radio_data[11] << 8) + radio_data[12];
 				pot_to_speed(&timer1, speed);
 				break;
-					 */
-					case 2:
-						// in case we turned off the output after radio link loss
-						timer1.digital_on(CHANNEL_1);
-						timer1.digital_on(CHANNEL_2);
-						speed = (radio_data[3] << 8) + radio_data[4];
-						if (speed > 512) {
-							do_loco_speed(dcc_address_1, (speed - 512) / 4);
-						} else {
-							do_loco_speed(dcc_address_1, 0x80 | ((512 - speed) / 4) );
-						}
-						speed = (radio_data[5] << 8) + radio_data[6];
-						if (speed > 512) {
-							do_loco_speed(dcc_address_2, (speed - 512) / 4);
-						} else {
-							do_loco_speed(dcc_address_2, 0x80 | ((512 - speed) / 4) );
-						}
-						break;
-					default:
-						break;
+				 */
+				case 2:
+					// in case we turned off the output after radio link loss
+					timer1.digital_on(CHANNEL_1);
+					timer1.digital_on(CHANNEL_2);
+					speed = (radio_data[3] << 8) + radio_data[4];
+					if (speed > 512) {
+						do_loco_speed(dcc_address_1, (speed - 512) / 4);
+					} else {
+						do_loco_speed(dcc_address_1, 0x80 | ((512 - speed) / 4) );
 					}
-				}
-			} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
-				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
-				// TO BE CHECKED .... but does not seem to happen ...
-			};
-#if 0
-			else {
-				// Reprogram radio
-				CE_LOW();        // Set Chip Enable (CE) pin low during chip init
-				radio_pl_init_prx ();
-				Serial.write('R');
-			};
-#endif
-
-
-			// Do we have another packet ?
-			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-			if ((fifo_status &0x01) == 0) continue;
-			// Packet received and processed, wait for next packet for 1 sec
-			set_radio_timeout(1000/4);
-			ack = 0;
-			while (!check_radio_timeout()) {
-				/* Now see if we need to send the next packet ... */
-				run_organizer();
-				/* otherwise, do we have someting going on for the radio */
-				if (radio_activity()) {
-					ack=1;
-//					Serial.println(F("#"));
+					speed = (radio_data[5] << 8) + radio_data[6];
+					if (speed > 512) {
+						do_loco_speed(dcc_address_2, (speed - 512) / 4);
+					} else {
+						do_loco_speed(dcc_address_2, 0x80 | ((512 - speed) / 4) );
+					}
+					break;
+				default:
 					break;
 				}
-			}
-			if (ack == 0) {
+			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
+				timeout_counter ++;
+				if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+					CE_LOW();
+					radio_pl_init_prx();
+					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
+					timeout_counter = 0;
+				}
 				// No packet received for 1 sec - turn OFF outputs
 				timer1.digital_off(CHANNEL_1);
 				timer1.digital_off(CHANNEL_2);
-//				Serial.write('S');
-			}
+			};
 		}
-		// Packet should have been received let's try to see
 	} else { // analog
 		Serial.println(F("Analog"));
 		timer1.begin(analog);
 		while (1) {
-			status = hal_nrf_get_status();
-
-			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-#ifdef DEBUG
-			Serial.print(F("St:"));
-			Serial.println(status,16);
-			Serial.print(F("Fi:"));
-			Serial.println(fifo_status,16);
-#endif
-			//		if ((status & (1<<HAL_NRF_RX_DR)) != 0) { // a packet is available
-			if ((fifo_status & 0x01) == 0) { // a packet is available
-				// get it
-				count = hal_nrf_read_reg(R_RX_PL_WID);
-				if (count != 0) {
-					hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, radio_data, count);
-					// clear IRQ source
-					hal_nrf_get_clear_irq_flags();
-#ifdef DEBUG
-					Serial.write('.');
-					for (uint8_t i=0; i<8; i++) {
-						Serial.write(' ');
-						Serial.print(radio_data[i],16);
-					}
-					Serial.println();
-#endif
+			status = radio_get_packet(radio_data, &count);
+			if (status == OK ) {
 					switch (radio_data[0]) {
 					/*				case 1:
 					speed = (radio_data[11] << 8) + radio_data[12];
@@ -264,42 +204,20 @@ int main(void) {
 					default:
 						break;
 					}
+			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
+				timeout_counter ++;
+				if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+					CE_LOW();
+					radio_pl_init_prx();
+					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
+					timeout_counter = 0;
 				}
-			} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
-				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
-				// TO BE CHECKED .... but does not seem to happen ...
-			};
-#if 0
-			else {
-				// Reprogram radio
-				CE_LOW();        // Set Chip Enable (CE) pin low during chip init
-				radio_pl_init_prx ();
-				Serial.write('R');
-			};
-#endif
-			// Do we have another packet ?
-			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-			if ((fifo_status &0x01) == 0) continue;
-			// Packet received and processed, wait for next packet for 1 sec
-			set_radio_timeout(1000/4);
-			ack = 0;
-			while (!check_radio_timeout()) {
-				if (radio_activity()) {
-					ack=1;
-//					Serial.println(F("#"));
-					break;
-				}
-			}
-			if (ack == 0) {
 				// No packet received for 1 sec - turn OFF outputs
 				timer1.analog_set_speed(CHANNEL_1,512);
 				timer1.analog_set_direction(CHANNEL_1,off);
 				timer1.analog_set_speed(CHANNEL_2,512);
 				timer1.analog_set_direction(CHANNEL_2,off);
-
-//				Serial.write('S');
-			}
-			// Packet should have been received let's try to see
+			};
 		}
 	}
 }

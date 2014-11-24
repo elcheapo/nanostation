@@ -88,3 +88,32 @@ void radio_pl_init_prx (void) {
 	hal_nrf_flush_tx(); 						// flush tx fifo, to start clean
 }
 
+
+uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
+	uint8_t status, fifo_status;
+	while (1) {
+		status = hal_nrf_get_status();
+		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
+		if ((fifo_status & 0x01) == 0) { // a packet is available
+			// get it
+			* count = hal_nrf_read_reg(R_RX_PL_WID);
+			if (* count != 0) {
+				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
+				// clear IRQ source
+				hal_nrf_get_clear_irq_flags();
+				return OK;
+			}
+		} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
+			hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
+			// TO BE CHECKED .... but does not seem to happen ...
+		};
+		set_radio_timeout(1000/4);
+		while (!check_radio_timeout()) {
+			if (radio_activity()) {
+				break;
+			}
+			return NOK;
+		}
+	}
+	return OK;
+}
