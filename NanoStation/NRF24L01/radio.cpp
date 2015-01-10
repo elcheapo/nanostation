@@ -97,7 +97,9 @@ uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 		if ((fifo_status & 0x01) == 0) { // a packet is available
 			// get it
 			* count = hal_nrf_read_reg(R_RX_PL_WID);
-			if (* count != 0) {
+			if ( * count > 32) {
+				hal_nrf_flush_rx();
+			} else if (* count != 0) {
 				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
 				// clear IRQ source
 				hal_nrf_get_clear_irq_flags();
