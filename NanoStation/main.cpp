@@ -90,7 +90,7 @@ int main(void) {
 	timer1.end();
 
 	Serial.println(F("Nano Station"));
-//	Serial.write('>');
+	//	Serial.write('>');
 
 	radio_pl_init_prx();
 	CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
@@ -99,14 +99,16 @@ int main(void) {
 	while (1) {
 		status = radio_get_packet(radio_data, &count);
 		if (status == OK) {
-			speed = (radio_data[3] << 8) + radio_data[4];
-			if (speed > 750 ) {
-				mode = analog;
-				break;
-			}
-			if (speed < 250 ){
-				mode = digital;
-				break;
+			if (radio_data[0]==2) {
+				speed = (radio_data[3] << 8) + radio_data[4];
+				if (speed > 750 ) {
+					mode = analog;
+					break;
+				}
+				if (speed < 250 ){
+					mode = digital;
+					break;
+				}
 			}
 		} else { // Timeout receiving radio packet just wait, but re-initialize radio just in case after a while
 			timeout_counter ++;
@@ -187,23 +189,23 @@ int main(void) {
 		while (1) {
 			status = radio_get_packet(radio_data, &count);
 			if (status == OK ) {
-					switch (radio_data[0]) {
-					/*				case 1:
+				switch (radio_data[0]) {
+				/*				case 1:
 					speed = (radio_data[11] << 8) + radio_data[12];
 					pot_to_speed(&timer1, speed);
 					break;
-					 */
-					case 2:
-						speed = (radio_data[3] << 8) + radio_data[4];
-						pot_to_speed(CHANNEL_1, &timer1, speed);
-						speed = (radio_data[5] << 8) + radio_data[6];
-						pot_to_speed(CHANNEL_2, &timer1, speed);
-						break;
-						//				hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
-						/* Ignore other stuff */
-					default:
-						break;
-					}
+				 */
+				case 2:
+					speed = (radio_data[3] << 8) + radio_data[4];
+					pot_to_speed(CHANNEL_1, &timer1, speed);
+					speed = (radio_data[5] << 8) + radio_data[6];
+					pot_to_speed(CHANNEL_2, &timer1, speed);
+					break;
+					//				hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
+					/* Ignore other stuff */
+				default:
+					break;
+				}
 			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
 				timeout_counter ++;
 				if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
