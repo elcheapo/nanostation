@@ -102,7 +102,6 @@ uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 				* count = hal_nrf_read_reg(R_RX_PL_WID);
 				if ( * count > 32) {
 					hal_nrf_flush_rx();
-					hal_nrf_get_clear_irq_flags();
 				} else if (* count != 0) {
 					hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
 					// clear IRQ source
@@ -113,6 +112,8 @@ uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
 				// TO BE CHECKED .... but does not seem to happen ...
 			};
+			// Allways clear irq flags
+			hal_nrf_get_clear_irq_flags();
 		}
 		if (check_radio_timeout()) {
 			// No packet for a while
