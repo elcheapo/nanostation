@@ -99,6 +99,7 @@ int main(void) {
 	while (1) {
 		status = radio_get_packet(radio_data, &count);
 		if (status == OK) {
+			Serial.write('R');
 			if (radio_data[0]==2) {
 				speed = (radio_data[3] << 8) + radio_data[4];
 				if (speed > 750 ) {
@@ -111,6 +112,7 @@ int main(void) {
 				}
 			}
 		} else { // Timeout receiving radio packet just wait, but re-initialize radio just in case after a while
+			Serial.write('T');
 			timeout_counter ++;
 			if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
 				CE_LOW();

@@ -38,7 +38,7 @@ void radio_send_packet_no_ack(uint8_t *packet, uint8_t length) {
 	hal_nrf_write_multibyte_reg(W_TX_PAYLOAD_NO_ACK, packet, length);      // load message into radio
 	CE_PULSE();                                 // send packet
 }
-*/
+ */
 
 #define ACK_PL
 #define AUTO_ACK
@@ -71,7 +71,7 @@ void radio_pl_init_prx (void) {
 
 	// Write addresses LSB first
 	hal_nrf_write_multibyte_reg(HAL_NRF_PIPE0, NRF_address1, HAL_NRF_AW_5BYTES);
-//	hal_nrf_write_multibyte_reg(HAL_NRF_TX, NRF_address1, HAL_NRF_AW_5BYTES); Not used in PRX
+	//	hal_nrf_write_multibyte_reg(HAL_NRF_TX, NRF_address1, HAL_NRF_AW_5BYTES); Not used in PRX
 	hal_nrf_write_multibyte_reg(HAL_NRF_PIPE1, NRF_address, HAL_NRF_AW_5BYTES);
 	hal_nrf_write_reg(HAL_NRF_PIPE2, NRF_address2[0]);
 
@@ -91,29 +91,31 @@ void radio_pl_init_prx (void) {
 
 uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 	uint8_t status, fifo_status;
+
+	set_radio_timeout(1000/4);
 	while (1) {
-		status = hal_nrf_get_status();
-		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-		if ((fifo_status & 0x01) == 0) { // a packet is available
-			// get it
-			* count = hal_nrf_read_reg(R_RX_PL_WID);
-			if ( * count > 32) {
-				hal_nrf_flush_rx();
-			} else if (* count != 0) {
-				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
-				// clear IRQ source
-				hal_nrf_get_clear_irq_flags();
-				return OK;
-			}
-		} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
-			hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
-			// TO BE CHECKED .... but does not seem to happen ...
-		};
-		set_radio_timeout(1000/4);
-		while (!check_radio_timeout()) {
-			if (radio_activity()) {
-				break;
-			}
+		if (radio_activity()) {
+			status = hal_nrf_get_status();
+			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
+			if ((fifo_status & 0x01) == 0) { // a packet is available
+				// get it
+				* count = hal_nrf_read_reg(R_RX_PL_WID);
+				if ( * count > 32) {
+					hal_nrf_flush_rx();
+					hal_nrf_get_clear_irq_flags();
+				} else if (* count != 0) {
+					hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
+					// clear IRQ source
+					hal_nrf_get_clear_irq_flags();
+					return OK;
+				}
+			} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
+				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
+				// TO BE CHECKED .... but does not seem to happen ...
+			};
+		}
+		if (check_radio_timeout()) {
+			// No packet for a while
 			return NOK;
 		}
 	}
