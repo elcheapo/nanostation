@@ -112,7 +112,7 @@ uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
 				// TO BE CHECKED .... but does not seem to happen ...
 			};
-			// Allways clear irq flags
+			// Always clear irq flags
 			hal_nrf_get_clear_irq_flags();
 		}
 		if (check_radio_timeout()) {
