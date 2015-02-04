@@ -50,8 +50,8 @@
 #define MOSI			3		// out
 #define MISO			4		// in
 #define SCK				5		// out
-#define PortB6			6		// out
-#define PortB7			7		// out
+#define PortB6			6		// out (XTAL1)
+#define PortB7			7		// out (XTAL2)
 
 #define PORTB_DIRECTION	((uint8_t)0xef)   	// Output PINs for PORTB
 
@@ -72,7 +72,7 @@
 #define PORTC_DIRECTION	((uint8_t)0x0A)   	// Output PINs for PORTC
 
 // Port D
-#define PortD0			0		// in (RX)
+#define PortD0			0		// in (RX) - Buzzer out
 #define PortD1 			1		// out (TX)
 #define PD_NRF_IRQ		2		// in (INT0)
 #define PD_NRF_CE		3		// out
@@ -81,7 +81,7 @@
 #define PD_L298_IN1		6		// out
 #define PD_L298_IN2		7		// out
 
-#define PORTD_DIRECTION	((uint8_t)0xfa)   	// Output PINs for PORTD
+#define PORTD_DIRECTION	((uint8_t)0xfb)   	// Output PINs for PORTD
 
 //========================================================================
 // 3. System Definitions

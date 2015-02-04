@@ -88,37 +88,36 @@ void radio_pl_init_prx (void) {
 	hal_nrf_flush_tx(); 						// flush tx fifo, to start clean
 }
 
-
+/*
+ * Return a packet if the radio has received a valid packet - returns immediately if no packet is received or if an invalid packet is received (>32)
+ */
 uint8_t radio_get_packet(uint8_t * packet, uint8_t * count) {
 	uint8_t status, fifo_status;
 
-	set_radio_timeout(1000/4);
-	while (1) {
-		if (radio_activity()) {
-			status = hal_nrf_get_status();
-			fifo_status = hal_nrf_read_reg(FIFO_STATUS);
-			if ((fifo_status & 0x01) == 0) { // a packet is available
-				// get it
-				* count = hal_nrf_read_reg(R_RX_PL_WID);
-				if ( * count > 32) {
-					hal_nrf_flush_rx();
-				} else if (* count != 0) {
-					hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
-					// clear IRQ source
-					hal_nrf_get_clear_irq_flags();
-					return OK;
-				}
-			} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
-				hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
-				// TO BE CHECKED .... but does not seem to happen ...
-			};
-			// Always clear irq flags
+	if (radio_activity()) {
+		status = hal_nrf_get_status();
+		fifo_status = hal_nrf_read_reg(FIFO_STATUS);
+		if ((fifo_status & 0x01) == 0) { // a packet is available
+			// get it
+			* count = hal_nrf_read_reg(R_RX_PL_WID);
+			if (( *count > 32) || (*count == 0)) {
+				hal_nrf_flush_rx();
+				hal_nrf_get_clear_irq_flags();
+				return NOK;
+			} else {
+				hal_nrf_read_multibyte_reg(R_RX_PAYLOAD, packet, * count);
+				// clear IRQ source
+				hal_nrf_get_clear_irq_flags();
+				return OK;
+			}
+		} else if ((status & (1<<HAL_NRF_MAX_RT)) != 0 ) { // Max Retry, flush TX
+			hal_nrf_flush_tx(); 		// flush tx fifo, avoid fifo jam
 			hal_nrf_get_clear_irq_flags();
-		}
-		if (check_radio_timeout()) {
-			// No packet for a while
 			return NOK;
-		}
+			// TO BE CHECKED .... but does not seem to happen ...
+		};
+		hal_nrf_get_clear_irq_flags();
 	}
-	return OK;
+	return NOK;
 }
+

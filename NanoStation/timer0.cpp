@@ -8,9 +8,9 @@
 #include "elcheapo_remote.h"
 #include "timer0.h"
 
-volatile uint8_t timeout;
-volatile uint8_t loop_time;
-volatile uint8_t radio_timeout;
+volatile uint16_t timeout;
+volatile uint16_t loop_time;
+volatile uint16_t radio_timeout;
 
 void init_timer0_tick(void) {
     // Timer/Counter 0 initialization

@@ -63,7 +63,7 @@ void pot_to_speed (uint8_t channel, DCC_timer * timer, uint16_t pot) {
 }
 
 int main(void) {
-	uint8_t status, timeout_counter;
+	uint8_t status;
 	uint8_t count;
 	uint16_t speed;
 
@@ -94,12 +94,13 @@ int main(void) {
 
 	radio_pl_init_prx();
 	CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-	timeout_counter = 0;
+	set_radio_timeout(5000/4);
 	// Now decide if we want to do analog (POT to the right > 750) or digital (POT to the left < 250)
 	while (1) {
 		status = radio_get_packet(radio_data, &count);
 		if (status == OK) {
 			Serial.write('R');
+			set_radio_timeout(5000/4);
 			if (radio_data[0]==2) {
 				speed = (radio_data[3] << 8) + radio_data[4];
 				if (speed > 750 ) {
@@ -111,14 +112,12 @@ int main(void) {
 					break;
 				}
 			}
-		} else { // Timeout receiving radio packet just wait, but re-initialize radio just in case after a while
-			Serial.write('T');
-			timeout_counter ++;
-			if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+		} else { // Timeout receiving radio packet, re-initialize radio
+			if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 5 sec...
+				Serial.write('T');
 				CE_LOW();
 				radio_pl_init_prx();
 				CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-				timeout_counter = 0;
 			}
 
 		};
@@ -140,11 +139,13 @@ int main(void) {
 		DCC_Reset.repeat = 30;
 		timer1.send_dcc_packet(&DCC_Reset);
 		DCC_Reset.repeat = 1;
+		set_radio_timeout(1000/4);
 
 
 		while (1) {
 			status = radio_get_packet(radio_data, &count);
 			if (status == OK ) {
+				set_radio_timeout(1000/4);
 				switch (radio_data[0]) {
 				/*
   				case 1:
@@ -172,17 +173,16 @@ int main(void) {
 				default:
 					break;
 				}
-			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
-				timeout_counter ++;
-				if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+			} else { // no radio packet
+				if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
+					Serial.write('T');
 					CE_LOW();
 					radio_pl_init_prx();
 					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-					timeout_counter = 0;
+					// No packet received for 1 sec - turn OFF outputs
+					timer1.digital_off(CHANNEL_1);
+					timer1.digital_off(CHANNEL_2);
 				}
-				// No packet received for 1 sec - turn OFF outputs
-				timer1.digital_off(CHANNEL_1);
-				timer1.digital_off(CHANNEL_2);
 			};
 		}
 	} else { // analog
@@ -209,19 +209,18 @@ int main(void) {
 					break;
 				}
 			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
-				timeout_counter ++;
-				if (timeout_counter > MAX_TIMEOUTS) { // Re-initialize radio
+				if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
+					Serial.write('T');
 					CE_LOW();
 					radio_pl_init_prx();
 					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-					timeout_counter = 0;
-				}
-				// No packet received for 1 sec - turn OFF outputs
-				timer1.analog_set_speed(CHANNEL_1,512);
-				timer1.analog_set_direction(CHANNEL_1,off);
-				timer1.analog_set_speed(CHANNEL_2,512);
-				timer1.analog_set_direction(CHANNEL_2,off);
-			};
+					// No packet received for 1 sec - turn OFF outputs
+					timer1.analog_set_speed(CHANNEL_1,512);
+					timer1.analog_set_direction(CHANNEL_1,off);
+					timer1.analog_set_speed(CHANNEL_2,512);
+					timer1.analog_set_direction(CHANNEL_2,off);
+				};
+			}
 		}
 	}
 }

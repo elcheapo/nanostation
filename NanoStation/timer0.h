@@ -9,27 +9,27 @@
 #define TIMER0_H_
 
 void init_timer0_tick(void);
-void wait_tempo(uint8_t nb);
+void wait_tempo(uint16_t nb);
 uint8_t check_timeout(void);
 uint8_t check_loop_time(void);
 
-extern volatile uint8_t timeout;
-extern volatile uint8_t loop_time;
-extern volatile uint8_t radio_timeout;
+extern volatile uint16_t timeout;
+extern volatile uint16_t loop_time;
+extern volatile uint16_t radio_timeout;
 
-inline void set_timeout(uint8_t nb) {
+inline void set_timeout(uint16_t nb) {
 	timeout = nb;
 }
 
-inline void set_loop_time(uint8_t nb) {
+inline void set_loop_time(uint16_t nb) {
 	loop_time = nb;
 }
 
-inline void set_radio_timeout(uint8_t nb) {
+inline void set_radio_timeout(uint16_t nb) {
 	radio_timeout = nb;
 }
 
-inline void wait_tempo(uint8_t nb) {
+inline void wait_tempo(uint16_t nb) {
 	timeout = nb;
 	while (timeout != 0);
 }
