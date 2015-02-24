@@ -31,7 +31,7 @@
 #define RF_PAYLOAD_LENGTH 32
 
 /** Defines how many retransmits that should be performed */
-#define RF_RETRANSMITS 1
+#define RF_RETRANSMITS 3
 
 /** Defines the retransmit delay. Should be a multiple of 250. If the 
  * RF_PAYLOAD_LENGTH is larger than 18, a higher retransmit delay need to
@@ -42,7 +42,7 @@
 #if (RF_PAYLOAD_LENGTH <= 18)
 #define RF_RETRANS_DELAY 250
 #else
-#define RF_RETRANS_DELAY 500
+#define RF_RETRANS_DELAY 1000
 #endif
 
 extern const uint8_t NRF_address[];
