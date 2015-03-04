@@ -51,7 +51,7 @@ const uint8_t NRF_address2[HAL_NRF_AW_5BYTES] = {0x55,'h','c','l','E'}; // Exist
 const uint8_t NRF_address[HAL_NRF_AW_5BYTES] = {0x5a,'h','c','l','E'};
 
 
-void radio_pl_init_prx (void) {
+uint8_t radio_pl_init_prx (void) {
 	hal_spi_init(8000000);						// Init SPI at 8 MHz
 	CE_LOW();        // Set Chip Enable (CE) pin low during chip init
 
@@ -86,6 +86,8 @@ void radio_pl_init_prx (void) {
 	wait_tempo(2);
 	hal_nrf_write_reg(STATUS, 0x70);			// Clear pending IRQ
 	hal_nrf_flush_tx(); 						// flush tx fifo, to start clean
+	return hal_nrf_get_status();
+
 }
 
 /*

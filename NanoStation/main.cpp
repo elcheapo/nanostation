@@ -66,6 +66,7 @@ int main(void) {
 	uint8_t status;
 	uint8_t count;
 	uint16_t speed;
+	bool powered;
 
 	// see config.h
 	DDRB=PORTB_DIRECTION;
@@ -84,15 +85,24 @@ int main(void) {
 	// enable interrupts
 	__builtin_avr_sei ();
 
+	powered = false;
+
 	dcc_address_1 = 3;
 	dcc_address_2 = 4;
 
 	timer1.end();
 
+	Serial.println();
 	Serial.println(F("Nano Station"));
 	//	Serial.write('>');
 
-	radio_pl_init_prx();
+	status = radio_pl_init_prx();
+	if ((status & 0x80) == 0) {
+		Serial.println(F("Radio OK"));
+	} else {
+		while (1);
+		// If higher bit of radio status is not 0 - we have a wiring issue ...
+	}
 	CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
 	set_radio_timeout(5000/4);
 	// Now decide if we want to do analog (POT to the right > 750) or digital (POT to the left < 250)
@@ -118,6 +128,7 @@ int main(void) {
 				CE_LOW();
 				radio_pl_init_prx();
 				CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
+				set_radio_timeout(5000/4);
 			}
 
 		};
@@ -125,38 +136,42 @@ int main(void) {
 
 	if (mode == digital) {
 		Serial.println(F("Digital"));
-
-		timer1.begin(digital);
-		timer1.digital_on(CHANNEL_1);
-		timer1.digital_on(CHANNEL_2);
 		new_loco(dcc_address_1);
 		new_loco(dcc_address_2);
-		//Switch on lights
-		do_loco_func_grp0(dcc_address_1,1);
-		do_loco_func_grp0(dcc_address_2,1);
+	} else { // analog
+		Serial.println(F("Analog"));
+		timer1.begin(analog);
+	}
+	set_radio_timeout(1000/4);
 
-		// Start in digital , send 30 RESET so the decoder switches to digital
-		DCC_Reset.repeat = 30;
-		timer1.send_dcc_packet(&DCC_Reset);
-		DCC_Reset.repeat = 1;
-		set_radio_timeout(1000/4);
-
-
-		while (1) {
-			status = radio_get_packet(radio_data, &count);
-			if (status == OK ) {
-				set_radio_timeout(1000/4);
-				switch (radio_data[0]) {
-				/*
-  				case 1:
-				speed = (radio_data[11] << 8) + radio_data[12];
-				pot_to_speed(&timer1, speed);
-				break;
-				 */
-				case 2:
+	while (1) {
+		status = radio_get_packet(radio_data, &count);
+		if (status == OK ) {
+			set_radio_timeout(1000/4);
+			switch (radio_data[0]) {
+			/*
+			case 1:
+			speed = (radio_data[11] << 8) + radio_data[12];
+			pot_to_speed(&timer1, speed);
+			break;
+			 */
+			case 2:
+				if (mode == digital) {
 					// in case we turned off the output after radio link loss
-					timer1.digital_on(CHANNEL_1);
-					timer1.digital_on(CHANNEL_2);
+					if (powered == false) {
+						timer1.begin(digital);
+						timer1.digital_on(CHANNEL_1);
+						timer1.digital_on(CHANNEL_2);
+						//Switch on lights
+						do_loco_func_grp0(dcc_address_1,1);
+						do_loco_func_grp0(dcc_address_2,1);
+
+						// Start in digital , send 30 RESET so the decoder switches to digital
+						DCC_Reset.repeat = 30;
+						timer1.send_dcc_packet(&DCC_Reset);
+						DCC_Reset.repeat = 1;
+						powered = true;
+					}
 					speed = (radio_data[3] << 8) + radio_data[4];
 					if (speed > 512) {
 						do_loco_speed(dcc_address_1, (speed - 512) / 4);
@@ -169,58 +184,40 @@ int main(void) {
 					} else {
 						do_loco_speed(dcc_address_2, 0x80 | ((512 - speed) / 4) );
 					}
-					break;
-				default:
-					break;
-				}
-			} else { // no radio packet
-				if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
-					Serial.write('T');
-					CE_LOW();
-					radio_pl_init_prx();
-					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-					// No packet received for 1 sec - turn OFF outputs
-					timer1.digital_off(CHANNEL_1);
-					timer1.digital_off(CHANNEL_2);
-				}
-			};
-		}
-	} else { // analog
-		Serial.println(F("Analog"));
-		timer1.begin(analog);
-		while (1) {
-			status = radio_get_packet(radio_data, &count);
-			if (status == OK ) {
-				switch (radio_data[0]) {
-				/*				case 1:
-					speed = (radio_data[11] << 8) + radio_data[12];
-					pot_to_speed(&timer1, speed);
-					break;
-				 */
-				case 2:
+				} else { // analog
+					if (powered == false) {
+						timer1.begin(analog);
+						powered = true;
+					}
 					speed = (radio_data[3] << 8) + radio_data[4];
 					pot_to_speed(CHANNEL_1, &timer1, speed);
 					speed = (radio_data[5] << 8) + radio_data[6];
 					pot_to_speed(CHANNEL_2, &timer1, speed);
-					break;
-					//				hal_nrf_write_lcd_pload(ack_pipe, line , lcd->get_next_line(), 13);
-					/* Ignore other stuff */
-				default:
-					break;
 				}
-			} else { // Timeout receiving radio packet, re-initialize radio just in case after a while
-				if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
-					Serial.write('T');
-					CE_LOW();
-					radio_pl_init_prx();
-					CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
-					// No packet received for 1 sec - turn OFF outputs
+				break;
+			default:
+				break;
+			}
+		} else { // no radio packet
+			if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
+				Serial.write('T');
+				CE_LOW();
+				radio_pl_init_prx();
+				CE_HIGH();        // Set Chip Enable (CE) pin high to enable receiver
+				// No packet received for 1 sec - turn OFF outputs
+				if (mode == digital) {
+					timer1.digital_off(CHANNEL_1);
+					timer1.digital_off(CHANNEL_2);
+				} else { //  analog
 					timer1.analog_set_speed(CHANNEL_1,512);
 					timer1.analog_set_direction(CHANNEL_1,off);
 					timer1.analog_set_speed(CHANNEL_2,512);
 					timer1.analog_set_direction(CHANNEL_2,off);
-				};
+
+				}
+				powered = false;
+				set_radio_timeout(5000/4);
 			}
-		}
-	}
+		};
+	} // While
 }

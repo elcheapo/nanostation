@@ -77,7 +77,7 @@ void radio_send_packet_no_ack(uint8_t *packet, uint8_t length);
  * @param address The radios working address
  * @param operational_mode The operational mode, either @c HAL_NRF_PRX or @c HAL_NRF_PTX
  */
-void radio_pl_init_prx (void);
+uint8_t radio_pl_init_prx (void);
 
 
 /** This function reads the interrupts. It does the work
