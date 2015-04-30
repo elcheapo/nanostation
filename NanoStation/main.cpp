@@ -199,6 +199,9 @@ int main(void) {
 				break;
 			}
 		} else { // no radio packet
+			if (mode == digital) {
+				run_organizer();
+			}
 			if (check_radio_timeout()) { // Re-initialize radio if we did not get anything after 1 sec...
 				Serial.write('T');
 				CE_LOW();
